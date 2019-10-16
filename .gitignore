@@ -1,0 +1,12 @@
+.vs/
+*.suo
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+[Bb]uild/
+bld/
+[Bb]in/
+[Oo]bj/
+dist
+node_modules

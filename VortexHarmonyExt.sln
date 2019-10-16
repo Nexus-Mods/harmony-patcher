@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.572
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VortexHarmonyExec", "VortexHarmoyExec\VortexHarmonyExec.csproj", "{139E4D1A-276B-4D03-A0EB-1BDC38B023B2}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B296D0A4-1114-4690-9520-463954B4DB8D} = {B296D0A4-1114-4690-9520-463954B4DB8D}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VortexHarmonyInstaller", "VortexHarmonyInstaller\VortexHarmonyInstaller.csproj", "{B296D0A4-1114-4690-9520-463954B4DB8D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{139E4D1A-276B-4D03-A0EB-1BDC38B023B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{139E4D1A-276B-4D03-A0EB-1BDC38B023B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{139E4D1A-276B-4D03-A0EB-1BDC38B023B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{139E4D1A-276B-4D03-A0EB-1BDC38B023B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B296D0A4-1114-4690-9520-463954B4DB8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B296D0A4-1114-4690-9520-463954B4DB8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B296D0A4-1114-4690-9520-463954B4DB8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B296D0A4-1114-4690-9520-463954B4DB8D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3AF97AEF-7E9C-4D5A-A597-C29FF81D5715}
+	EndGlobalSection
+EndGlobal
