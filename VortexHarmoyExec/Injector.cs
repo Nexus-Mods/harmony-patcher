@@ -106,6 +106,7 @@ namespace VortexHarmonyExec
 
             return ((file1byte - file2byte) == 0);
         }
+
         /// <summary>
         /// Create a back up file for the provided file.
         /// </summary>
@@ -228,6 +229,8 @@ namespace VortexHarmonyExec
                     .SingleOrDefault();
 
                 bReflectionEnabled = (instr == null);
+
+                assembly.Dispose();
             }
             catch (Exception exc)
             {
@@ -328,6 +331,7 @@ namespace VortexHarmonyExec
         {
             m_eInjectorState = Enums.EInjectorState.RUNNING;
             string strTempFile = null;
+            AssemblyDefinition unityAssembly = null;
             try
             {
                 // Ensure we have reflection enabled - there's no point
@@ -346,8 +350,7 @@ namespace VortexHarmonyExec
                 string[] entryPoint = m_strEntryPoint.Split(new string[] { "::" }, StringSplitOptions.None);
 
                 strTempFile = Util.GetTempFile(m_strGameAssemblyPath);
-
-                using (AssemblyDefinition unityAssembly = AssemblyDefinition.ReadAssembly(strTempFile,
+                using (unityAssembly = AssemblyDefinition.ReadAssembly(strTempFile,
                     new ReaderParameters { ReadWrite = true, AssemblyResolver = m_resolver }))
                 {
                     if (IsInjected(unityAssembly, entryPoint)) 
@@ -383,6 +386,9 @@ namespace VortexHarmonyExec
             catch (Exception exc)
             {
                 Enums.EErrorCode errorCode = Enums.EErrorCode.UNKNOWN;
+
+                if (unityAssembly != null)
+                    unityAssembly.Dispose();
 
                 if (strTempFile != null)
                     Util.DeleteTemp(strTempFile);
