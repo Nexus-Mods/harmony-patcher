@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,8 +13,11 @@ namespace VortexHarmonyInstaller.ModTypes
 {
     // Any data we want to expose to the mod should be included in
     //  this class.
-    public class VortexMod : ILoggableMod
+    public class VortexMod : ILoggableMod, IExposedMod
     {
+        public Action<VortexMod> OnGUI = null;
+        public Action<VortexMod, bool> OnGUIToggle = null;
+
         private VortexModData m_ModData = null;
         public VortexModData VortexData
         {
@@ -82,6 +86,46 @@ namespace VortexHarmonyInstaller.ModTypes
         {
             return string.Format("[{0}] - {1}", m_ModData.Base_Id, strMessage);
         }
+
+        public void InvokeOnGUI()
+        {
+            OnGUI?.Invoke(this);
+        }
+
+        public void InvokeToggleGUI(bool bToggled)
+        {
+            OnGUIToggle?.Invoke(this, bToggled);
+        }
+
+        public void InvokeOnStart()
+        {
+            m_ModData.Hooks.Start?.Invoke();
+        }
+
+        public void InvokeOnUpdate(float fDelta)
+        {
+            m_ModData.Hooks.Update?.Invoke();
+        }
+
+        public void InvokeOnLateUpdate(float fDelta)
+        {
+            m_ModData.Hooks.LateUpdate?.Invoke();
+        }
+
+        public void InvokeOnFixedUpdate(float fDelta)
+        {
+            m_ModData.Hooks.FixedUpdate?.Invoke();
+        }
+
+        public void InvokeCustom(string strName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public string GetModName()
+        {
+            return m_ModData.DisplayName;
+        }
     }
 
     public class VortexModData : BaseParsedModData, IParsedModData
@@ -106,6 +150,7 @@ namespace VortexHarmonyInstaller.ModTypes
             set { m_strId = value; }
         }
 
+        [JsonRequired]
         public string DisplayName {
             get { return m_strName; }
             set { m_strName = value; }
@@ -131,6 +176,7 @@ namespace VortexHarmonyInstaller.ModTypes
                 if (modData.Base_Id != null)
                 {
                     AssignBaseData(modData);
+                    AssignAssemblyName(strManifestPath);
                     return true;
                 }
                 else

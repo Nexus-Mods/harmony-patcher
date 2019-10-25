@@ -52,8 +52,11 @@ namespace VortexHarmonyExec
         // Suffix identifying Vortex's backup files.
         internal const string VORTEX_BACKUP_TAG = "_vortex_assembly_backup";
 
-        // The patcher function we wish to inject.
+        // The main patcher function we wish to inject.
         internal const string VORTEX_PATCH_METHOD = "VortexHarmonyInstaller.VortexPatcher::Patch";
+
+        // The optional Unity GUI patcher fuction.
+        internal const string VORTEX_UNITY_GUI_PATCH = "VortexUnity.VortexUnityManager::RunUnityPatcher";
 
         // Multilanguage Standard Common Object Runtime Library
         internal const string MSCORLIB = "mscorlib.dll";
@@ -276,6 +279,7 @@ namespace VortexHarmonyExec
         private static Enums.EInjectorState m_eInjectorState = Enums.EInjectorState.NONE;
         internal Enums.EInjectorState InjectorState { get { return m_eInjectorState; } }
 
+        private bool m_bInjectGUI;
         private string m_strDataPath;
         private string m_strEntryPoint;
         private string m_strGameAssemblyPath;
@@ -292,7 +296,7 @@ namespace VortexHarmonyExec
         };
 
         // Array of files we need to deploy/remove to/from the game's datapath.
-        private readonly string[] LIB_FILES = new string[] {
+        private static string[] _LIB_FILES = new string[] {
             "0Harmony.dll",
             "log4net.config",
             "log4net.dll",
@@ -314,6 +318,14 @@ namespace VortexHarmonyExec
                 m_strDataPath = strDataPath;
                 m_strEntryPoint = strEntryPoint;
                 m_strGameAssemblyPath = Path.Combine(strDataPath, Constants.UNITY_ASSEMBLY_LIB);
+
+                m_bInjectGUI = m_strGameAssemblyPath.EndsWith(Constants.UNITY_ASSEMBLY_LIB);
+                if (m_bInjectGUI)
+                {
+                    Array.Resize(ref _LIB_FILES, _LIB_FILES.Length + 1);
+                    _LIB_FILES[_LIB_FILES.Length - 1] = "VortexUnity.dll";
+                }
+
                 m_strModsDirectory = Path.Combine(strDataPath, Constants.MODS_DIRNAME);
                 m_resolver = new MissingAssemblyResolver(strDataPath);
             }
@@ -346,6 +358,7 @@ namespace VortexHarmonyExec
                 DeployFiles();
 
                 // Start the patching process.
+                string[] unityPatcher = Constants.VORTEX_UNITY_GUI_PATCH.Split(new string[] { "::" }, StringSplitOptions.None);
                 string[] patcherPoints = Constants.VORTEX_PATCH_METHOD.Split(new string[] { "::" }, StringSplitOptions.None);
                 string[] entryPoint = m_strEntryPoint.Split(new string[] { "::" }, StringSplitOptions.None);
 
@@ -378,6 +391,20 @@ namespace VortexHarmonyExec
                     }
 
                     methodDefinition.Body.GetILProcessor().InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(patcherMethod)));
+                    if (m_bInjectGUI)
+                    {
+                        try
+                        {
+                            AssemblyDefinition guiPatcher = AssemblyDefinition.ReadAssembly(Path.Combine(m_strDataPath, Constants.VORTEX_GUI_LIB));
+                            MethodDefinition guiMethod = guiPatcher.MainModule.GetType(unityPatcher[0]).Methods.First(x => x.Name == unityPatcher[1]);
+                            methodDefinition.Body.GetILProcessor().InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(guiMethod)));
+                        }
+                        catch (Exception exc)
+                        {
+                            throw new EntryPointNotFoundException("Unable to find/insert GUI patcher method definition", exc);
+                        }
+                    }
+
                     unityAssembly.Write(m_strGameAssemblyPath);
                     unityAssembly.Dispose();
                     Util.DeleteTemp(strTempFile);
@@ -525,7 +552,7 @@ namespace VortexHarmonyExec
             string strLibPath = VortexHarmonyManager.InstallPath;
             Directory.CreateDirectory(m_strModsDirectory);
             string[] files = Directory.GetFiles(strLibPath, "*", SearchOption.TopDirectoryOnly)
-                .Where(file => LIB_FILES.Contains(Path.GetFileName(file)))
+                .Where(file => _LIB_FILES.Contains(Path.GetFileName(file)))
                 .ToArray();
 
             foreach (string strFile in files)
@@ -538,7 +565,7 @@ namespace VortexHarmonyExec
         internal void PurgeFiles()
         {
             string[] files = Directory.GetFiles(m_strDataPath, "*", SearchOption.TopDirectoryOnly)
-                .Where(file => LIB_FILES.Contains(Path.GetFileName(file)))
+                .Where(file => _LIB_FILES.Contains(Path.GetFileName(file)))
                 .ToArray();
 
             foreach (string strFile in files)

@@ -83,6 +83,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Delegates\LoggerDelegates.cs" />
     <Compile Include="IGameConfig.cs" />
     <Compile Include="ModTypes\BaseParsedModData.cs" />
     <Compile Include="ModTypes\QMMData.cs" />
@@ -91,6 +92,7 @@
     <Compile Include="ModTypes\VortexModData.cs" />
     <Compile Include="ModTypes\VortexModType.cs" />
     <Compile Include="ModTypes\QMMModType.cs" />
+    <Compile Include="Delegates\MonoBehaviourHooks.cs" />
     <Compile Include="Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -117,9 +119,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\ildasm.exe" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>echo f | xcopy "$(TargetPath)" "D:\Projects\harmony-patcher\lib" /C /Y</PostBuildEvent>
   </PropertyGroup>
 </Project>

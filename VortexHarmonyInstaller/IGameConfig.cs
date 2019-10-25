@@ -34,4 +34,16 @@ namespace VortexHarmonyInstaller
         /// <returns>true if parsed and stored successfully</returns>
         bool ParseSettings(string strSettingsPath);
     }
+
+    public interface IExposedMod
+    {
+        void InvokeOnGUI();
+        void InvokeToggleGUI(bool bToggled);
+        void InvokeOnStart();
+        void InvokeOnUpdate(float fDelta = 0);
+        void InvokeOnLateUpdate(float fDelta = 0);
+        void InvokeOnFixedUpdate(float fDelta = 0);
+        void InvokeCustom(string strName);
+        string GetModName();
+    }
 }

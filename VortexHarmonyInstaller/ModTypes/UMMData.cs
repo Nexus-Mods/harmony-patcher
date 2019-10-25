@@ -7,12 +7,14 @@ using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 
+using VortexHarmonyInstaller.Delegates;
+
 namespace VortexHarmonyInstaller.ModTypes
 {
     // UMM passes a ModEntry object to its mods;
     //  we're going to hijack the object, keeping only
     //  properties and functionality that are relevant to us.
-    public class ModEntry
+    public class ModEntry: IExposedMod
     {
         // Reference to the mod's data
         private UMMData m_ModData = null;
@@ -37,6 +39,109 @@ namespace VortexHarmonyInstaller.ModTypes
         public static ModEntry GetModEntry(UMMData data, string strModPath)
         {
             return new ModEntry(data, strModPath);
+        }
+
+        public void InvokeOnGUI()
+        {
+            OnGUI?.Invoke(this);
+            OnFixedGUI?.Invoke(this);
+        }
+
+        public void InvokeToggleGUI(bool bToggled)
+        {
+            if ((bool)(OnToggle?.Invoke(this, bToggled)))
+                OnShowGUI?.Invoke(this);
+            else
+                OnHideGUI?.Invoke(this);
+        }
+
+        public void InvokeOnStart()
+        {
+            m_ModData.Hooks.Start?.Invoke();
+        }
+
+        public void InvokeOnUpdate(float fDelta)
+        {
+            OnUpdate?.Invoke(this, fDelta);
+        }
+
+        public void InvokeOnLateUpdate(float fDelta)
+        {
+            OnLateUpdate?.Invoke(this, fDelta);
+        }
+
+        public void InvokeOnFixedUpdate(float fDelta)
+        {
+            OnFixedUpdate?.Invoke(this, fDelta);
+        }
+
+        public void InvokeCustom(string strName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public string GetModName()
+        {
+            return Info.Id;
+        }
+
+        public Func<ModEntry, bool> OnUnload = null;
+        public Func<ModEntry, bool, bool> OnToggle = null;
+        public Action<ModEntry> OnGUI = null;
+        public Action<ModEntry> OnFixedGUI = null;
+        public Action<ModEntry> OnShowGUI = null;
+        public Action<ModEntry> OnHideGUI = null;
+        public Action<ModEntry> OnSaveGUI = null;
+        public Action<ModEntry, float> OnUpdate = null;
+        public Action<ModEntry, float> OnLateUpdate = null;
+        public Action<ModEntry, float> OnFixedUpdate = null;
+
+        public static class Logger
+        {
+            public static void NativeLog(string str)
+            {
+                LoggerDelegates.LogInfo(str);
+            }
+
+            public static void NativeLog(string str, string prefix)
+            {
+                LoggerDelegates.LogInfo(prefix + str);
+            }
+
+            public static void Log(string str)
+            {
+                LoggerDelegates.LogInfo(str);
+            }
+
+            public static void Log(string str, string prefix)
+            {
+                LoggerDelegates.LogInfo(prefix + str);
+            }
+
+            public static void Error(string str)
+            {
+                LoggerDelegates.LogError(str);
+            }
+
+            public static void Error(string str, string prefix)
+            {
+                LoggerDelegates.LogError(prefix + str);
+            }
+
+            public static void LogException(Exception e)
+            {
+                LoggerDelegates.LogError(e);
+            }
+
+            public static void LogException(string key, Exception e)
+            {
+                LoggerDelegates.LogError(e);
+            }
+
+            public static void LogException(string key, Exception e, string prefix)
+            {
+                LoggerDelegates.LogError(e);
+            }
         }
     }
 

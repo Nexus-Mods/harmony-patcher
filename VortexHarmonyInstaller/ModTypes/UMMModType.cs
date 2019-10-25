@@ -9,6 +9,7 @@ using System.Reflection;
 using Unity;
 
 using VortexHarmonyInstaller.Util;
+using System.Collections.Generic;
 
 namespace VortexHarmonyInstaller.ModTypes
 {
@@ -35,7 +36,7 @@ namespace VortexHarmonyInstaller.ModTypes
         }
     }
 
-    class UMMModType : BaseModType, IModType
+    internal class UMMModType : BaseModType, IModType
     {
         private UMMData Data { get { return m_ModData as UMMData; } }
 
@@ -217,6 +218,8 @@ namespace VortexHarmonyInstaller.ModTypes
                 ModEntry modEntry = ModEntry.GetModEntry(data, m_ModAssembly.Location);
                 object[] param = new object[] { modEntry };
                 methodInfo.Invoke(null, param);
+
+                AddExposedMod(modEntry);
             }
             catch (Exception exc)
             {

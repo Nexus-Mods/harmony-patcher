@@ -11,7 +11,9 @@ namespace VortexHarmonyExec
 {
     internal partial class Constants
     {
-        public const string VORTEX_LIB = "VortexHarmonyInstaller.dll";
+        public const string VORTEX_LIB = nameof(VortexHarmonyInstaller) + ".dll";
+
+        public const string VORTEX_GUI_LIB = "VortexUnity.dll";
     }
 
     internal partial class Util

@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 
+using VortexHarmonyInstaller.Delegates;
+
 namespace VortexHarmonyInstaller.ModTypes
 {
     internal partial class Exceptions
@@ -234,6 +236,9 @@ namespace VortexHarmonyInstaller.ModTypes
         [JsonIgnore] protected string m_strAssemblyName;
         [JsonIgnore] public string Base_AssemblyName { get { return m_strAssemblyName; } }
 
+        protected MonoBehaviourHooks m_MonoHooks = null;
+        public MonoBehaviourHooks Hooks { get { return m_MonoHooks; } }
+
         public virtual void AssignBaseData(BaseParsedModData other)
         {
             m_strId = other.Base_Id;
@@ -246,6 +251,20 @@ namespace VortexHarmonyInstaller.ModTypes
             m_strMinGameVersion = other.Base_MinGameVersion;
             m_strModVersion = other.Base_ModVersion;
             m_strAssemblyName = other.Base_AssemblyName;
+            m_MonoHooks = new MonoBehaviourHooks();
+        }
+
+        public virtual void AssignAssemblyName(string strManifestPath)
+        {
+            if (m_strAssemblyName == null)
+            {
+                string strDir = Path.GetDirectoryName(strManifestPath);
+                string strAssemblyName = Directory.GetFiles(strDir, "*.dll", SearchOption.TopDirectoryOnly).FirstOrDefault();
+                if (strAssemblyName != null)
+                {
+                    m_strAssemblyName = strAssemblyName;
+                }
+            }
         }
 
         public bool Equals(BaseParsedModData other)
@@ -270,7 +289,7 @@ namespace VortexHarmonyInstaller.ModTypes
         }
     }
 
-    internal class BaseModType
+    public class BaseModType
     {
         // Manifest filePath (must be absolute path)
         protected string m_strManifestPath;
@@ -287,8 +306,17 @@ namespace VortexHarmonyInstaller.ModTypes
         protected static Unity.UnityContainer m_ModDataContainer = new Unity.UnityContainer();
         internal static Unity.UnityContainer ModDataContainer { get { return m_ModDataContainer; } }
 
+        protected static List<IExposedMod> m_ExposedMods = new List<IExposedMod>();
+        public static List<IExposedMod> ExposedMods { get { return m_ExposedMods; } }
+
         public BaseModType()
         {
+        }
+
+        protected void AddExposedMod(IExposedMod mod)
+        {
+            if (!m_ExposedMods.Contains(mod))
+                m_ExposedMods.Add(mod);
         }
 
         protected void AssignManifestPath(string strManifestPath)

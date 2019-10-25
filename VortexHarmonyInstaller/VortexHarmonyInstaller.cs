@@ -39,6 +39,17 @@ namespace VortexHarmonyInstaller
 
         public static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
+        public delegate void ModsInjectionCompleteHandler(List<IExposedMod> exposedMods);
+        public static event ModsInjectionCompleteHandler ModsInjectionComplete;
+
+        private static void OnModsInjectionComplete(List<IExposedMod> exposedMods)
+        {
+            if (ModsInjectionComplete != null)
+            {
+                ModsInjectionComplete(exposedMods);
+            }
+        }
+
         public static void Patch()
         {
             // Set log file destination.
@@ -92,6 +103,9 @@ namespace VortexHarmonyInstaller
             }
 
             Logger.Info("Finished patching");
+
+            // Notify any subscribers we're finished patching.
+            OnModsInjectionComplete(BaseModType.ExposedMods);
         }
 
         public static void ResolveModList(FileInfo[] modFiles)
@@ -122,7 +136,7 @@ namespace VortexHarmonyInstaller
             var interfaceType = typeof(IModType);
             var types = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(s => s.GetTypes())
-                .Where(p => interfaceType.IsAssignableFrom(p) 
+                .Where(p => interfaceType.IsAssignableFrom(p)
                     && p.FullName != "VortexHarmonyInstaller.IModType");
 
             UnityContainer container = new UnityContainer();
