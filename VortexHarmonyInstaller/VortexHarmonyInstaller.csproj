@@ -85,13 +85,16 @@
   <ItemGroup>
     <Compile Include="Delegates\LoggerDelegates.cs" />
     <Compile Include="IGameConfig.cs" />
-    <Compile Include="ModTypes\BaseParsedModData.cs" />
-    <Compile Include="ModTypes\QMMData.cs" />
-    <Compile Include="ModTypes\UMMData.cs" />
-    <Compile Include="ModTypes\UMMModType.cs" />
-    <Compile Include="ModTypes\VortexModData.cs" />
-    <Compile Include="ModTypes\VortexModType.cs" />
-    <Compile Include="ModTypes\QMMModType.cs" />
+    <Compile Include="ModTypes\ModData\BaseParsedModData.cs" />
+    <Compile Include="ModTypes\Settings\ISettings.cs" />
+    <Compile Include="ModTypes\Settings\ModSettings.cs" />
+    <Compile Include="ModTypes\ModData\QMMData.cs" />
+    <Compile Include="ModTypes\ModData\UMMData.cs" />
+    <Compile Include="ModTypes\Settings\VortexModSettings.cs" />
+    <Compile Include="ModTypes\Types\UMMModType.cs" />
+    <Compile Include="ModTypes\ModData\VortexModData.cs" />
+    <Compile Include="ModTypes\Types\VortexModType.cs" />
+    <Compile Include="ModTypes\Types\QMMModType.cs" />
     <Compile Include="Delegates\MonoBehaviourHooks.cs" />
     <Compile Include="Resources.Designer.cs">
       <AutoGen>True</AutoGen>
