@@ -61,7 +61,7 @@ namespace VortexHarmonyExec
         // Multilanguage Standard Common Object Runtime Library
         internal const string MSCORLIB = "mscorlib.dll";
 
-        // Github location containi
+        // Github location containing mscorlib replacements.
         internal const string GITHUB_LINK = "https://raw.githubusercontent.com/IDCs/mscorlib-replacements/master/";
     }
 

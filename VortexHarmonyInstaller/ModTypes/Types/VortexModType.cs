@@ -80,7 +80,7 @@ namespace VortexHarmonyInstaller.ModTypes
                 bool hasVortexParam = methodInfo.GetParameters().SingleOrDefault() != null;
                 if (hasVortexParam)
                 {
-                    VortexMod mod = VortexMod.GetModEntry(data, "D:\\Games\\UntitledGooseGame\\Untitled_Data\\Managed");
+                    VortexMod mod = VortexMod.GetModEntry(data, VortexPatcher.CurrentDataPath);
                     object[] param = new object[] { mod };
                     try
                     {

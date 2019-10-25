@@ -42,6 +42,9 @@ namespace VortexHarmonyInstaller
         public delegate void ModsInjectionCompleteHandler(List<IExposedMod> exposedMods);
         public static event ModsInjectionCompleteHandler ModsInjectionComplete;
 
+        private static string m_strDataPath;
+        public static string CurrentDataPath { get { return m_strDataPath; } }
+
         private static void OnModsInjectionComplete(List<IExposedMod> exposedMods)
         {
             if (ModsInjectionComplete != null)
@@ -68,21 +71,21 @@ namespace VortexHarmonyInstaller
                 return;
             }
 
-            string strDataPath = Path.GetDirectoryName(strUnityEngine);
+            m_strDataPath = Path.GetDirectoryName(strUnityEngine);
 
             // Load log4net configuration
-            FileInfo logfile = new FileInfo(Path.Combine(strDataPath, Constants.LOG_CONFIG));
+            FileInfo logfile = new FileInfo(Path.Combine(CurrentDataPath, Constants.LOG_CONFIG));
             log4net.Config.XmlConfigurator.Configure(logfile);
 
             Logger.Info("===============");
             Logger.Info("Patcher started");
-            string strAssemblyPath = Path.Combine(strDataPath, Constants.INSTALLER_ASSEMBLY_NAME + ".dll");
+            string strAssemblyPath = Path.Combine(CurrentDataPath, Constants.INSTALLER_ASSEMBLY_NAME + ".dll");
             m_InstallerAssembly = AssemblyDefinition.ReadAssembly(strAssemblyPath);
 
             HarmonyInstance harmony = HarmonyInstance.Create("com.blacktreegaming.harmonypatcher");
             harmony.PatchAll();
 
-            string modsFolder = Path.Combine(strDataPath, "VortexMods");
+            string modsFolder = Path.Combine(CurrentDataPath, "VortexMods");
 
             // All dll files within the VortexMods folder are considered mods.
             FileInfo[] modLibFiles = new DirectoryInfo(modsFolder).GetFiles("*.dll", SearchOption.AllDirectories);

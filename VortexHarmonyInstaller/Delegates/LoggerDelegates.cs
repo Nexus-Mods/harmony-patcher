@@ -11,7 +11,7 @@ namespace VortexHarmonyInstaller.Delegates
         public delegate void OnInfo(object something);
         public static OnInfo LogInfo => VortexHarmonyInstaller.VortexPatcher.Logger.Info;
 
-        public delegate void OnError(object something);
+        public delegate void OnError(object something, Exception e = null);
         public static OnError LogError => VortexHarmonyInstaller.VortexPatcher.Logger.Error;
 
         public delegate void OnDebug(object something);
