@@ -236,6 +236,9 @@ namespace VortexHarmonyInstaller.ModTypes
         [JsonIgnore] protected string m_strAssemblyName;
         [JsonIgnore] public string Base_AssemblyName { get { return m_strAssemblyName; } }
 
+        // The location of the manifest file.
+        [JsonIgnore] protected string m_strManifestPath;
+
         protected MonoBehaviourHooks m_MonoHooks = null;
         public MonoBehaviourHooks Hooks { get { return m_MonoHooks; } }
 
@@ -256,6 +259,7 @@ namespace VortexHarmonyInstaller.ModTypes
 
         public virtual void AssignAssemblyName(string strManifestPath)
         {
+            m_strManifestPath = strManifestPath;
             if (m_strAssemblyName == null)
             {
                 string strDir = Path.GetDirectoryName(strManifestPath);

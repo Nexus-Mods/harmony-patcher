@@ -51,7 +51,7 @@ namespace VortexHarmonyInstaller.ModTypes
         {
             ModEntry modEntry = mod as ModEntry;
             var t = new T();
-            var filepath = this.GetSettingsPath(modEntry);
+            var filepath = GetSettingsPath(modEntry);
             if (File.Exists(filepath))
             {
                 try

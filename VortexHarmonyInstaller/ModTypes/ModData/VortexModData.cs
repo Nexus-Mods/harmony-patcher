@@ -19,15 +19,13 @@ namespace VortexHarmonyInstaller.ModTypes
         public Action<VortexMod, bool> OnGUIToggle = null;
 
         private VortexModData m_ModData = null;
-        public VortexModData VortexData
-        {
+        public VortexModData VortexData {
             get { return m_ModData; }
             private set { m_ModData = value; }
         }
 
         private string m_strGameDataPath;
-        public string DataPath
-        {
+        public string DataPath {
             get { return m_strGameDataPath; }
             private set { m_strGameDataPath = value; }
         }
@@ -164,6 +162,11 @@ namespace VortexHarmonyInstaller.ModTypes
         public string GameId {
             get { return m_strGameId; }
             set { m_strGameId = value; }
+        }
+
+        [JsonIgnore]
+        public string ModPath {
+            get { return Path.GetDirectoryName(m_strManifestPath); }
         }
 
         public bool ParseManifest(string strManifestPath)
