@@ -47,6 +47,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="UIScripts\LogoFade.cs" />
+    <Compile Include="UIScripts\ScrollScript.cs" />
     <Compile Include="VortexUI.cs" />
     <Compile Include="VortexUnityManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
