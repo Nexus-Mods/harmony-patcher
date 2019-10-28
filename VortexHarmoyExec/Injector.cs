@@ -63,6 +63,9 @@ namespace VortexHarmonyExec
 
         // Github location containing mscorlib replacements.
         internal const string GITHUB_LINK = "https://raw.githubusercontent.com/IDCs/mscorlib-replacements/master/";
+
+        // The name of the bundled asset file.
+        internal const string UI_BUNDLE_FILENAME = "vortexui";
     }
 
     internal partial class Util
@@ -279,7 +282,10 @@ namespace VortexHarmonyExec
         private static Enums.EInjectorState m_eInjectorState = Enums.EInjectorState.NONE;
         internal Enums.EInjectorState InjectorState { get { return m_eInjectorState; } }
 
+        private static string m_strBundledAssetsDest;
+
         private bool m_bInjectGUI;
+        private string m_strExtensionPath;
         private string m_strDataPath;
         private string m_strEntryPoint;
         private string m_strGameAssemblyPath;
@@ -316,6 +322,8 @@ namespace VortexHarmonyExec
             try
             {
                 m_strDataPath = strDataPath;
+                m_strBundledAssetsDest = Path.Combine(m_strDataPath, "VortexBundles", "UI");
+                m_strExtensionPath = VortexHarmonyManager.ExtensionPath;
                 m_strEntryPoint = strEntryPoint;
                 m_strGameAssemblyPath = Path.Combine(strDataPath, Constants.UNITY_ASSEMBLY_LIB);
 
@@ -557,6 +565,21 @@ namespace VortexHarmonyExec
 
             foreach (string strFile in files)
                 File.Copy(strFile, Path.Combine(m_strDataPath, Path.GetFileName(strFile)), true);
+
+            if (m_bInjectGUI && (m_strExtensionPath != null))
+            {
+                string[] uiFiles = new string[] {
+                    Path.Combine(m_strExtensionPath, Constants.UI_BUNDLE_FILENAME),
+                    Path.Combine(m_strExtensionPath, Constants.UI_BUNDLE_FILENAME + ".manifest"),
+                };
+
+                Directory.CreateDirectory(m_strBundledAssetsDest);
+                foreach (string file in uiFiles)
+                {
+                    string strDest = Path.Combine(m_strBundledAssetsDest, Path.GetFileName(file));
+                    File.Copy(file, strDest, true);
+                }
+            }
         }
 
         /// <summary>

@@ -30,8 +30,12 @@ namespace VortexHarmonyExec
     {
         private static Injector m_injector;
         private static string m_dataPath;
+
         private static string m_installPath;
         public static string InstallPath { get { return m_installPath; } }
+
+        private static string m_strExtensionPath;
+        public static string ExtensionPath { get { return m_strExtensionPath; } }
 
         private static string m_entryPoint;
 
@@ -43,7 +47,7 @@ namespace VortexHarmonyExec
                 return assembly;
 
             // Try to load by filename - split out the filename of the full assembly name
-            // and append the base path of the original assembly (ie. look in the same dir)
+            // and append the base path of the original assembly (i.e. look in the same dir)
             string filename = args.Name.Split(',')[0] + ".dll".ToLower();
             string asmFile = Path.Combine(@".\", "lib", filename);
 
@@ -57,6 +61,7 @@ namespace VortexHarmonyExec
             OptionSet options = new OptionSet
             {
                 { "h", "Shows this message and closes program", h => bShowHelp = h != null },
+                { "g|extension=", "Path to the game's extension folder", g => m_strExtensionPath = g },
                 { "m|managed=", "Path to the game's managed folder.", m => m_dataPath = m },
                 { "i|install=", "Path to Harmony Patcher's build folder.", i => m_installPath = i },
                 { "e|entry=", "This game's entry point formatted as: 'Namespace.ClassName::MethodName'", e => m_entryPoint = e },

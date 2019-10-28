@@ -36,7 +36,7 @@ const PATCHER_ERRORS = {
 //
 //  -r -> When provided, will inform the injector that we wish to remove
 //    the patcher function.
-function runPatcher(dataPath, entryPoint, remove) {
+function runPatcher(extensionPath, dataPath, entryPoint, remove) {
   let lastError;
   const wstream = fs.createWriteStream(LOG_FILE_PATH);
   //const wstream = fs.createWriteStream('log.log');
@@ -44,7 +44,8 @@ function runPatcher(dataPath, entryPoint, remove) {
   return new Promise((resolve, reject) => {
     let patcher;
     try {
-      patcher = spawn(EXEC_PATH, ['-m', dataPath,
+      patcher = spawn(EXEC_PATH, ['-g', extensionPath,
+                                  '-m', dataPath,
                                   '-e', entryPoint,
                                   '-i', MODULE_PATH,
                                   !!remove ? '-r' : '']);
