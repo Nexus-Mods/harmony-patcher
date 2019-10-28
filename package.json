@@ -4,8 +4,8 @@
   "description": "Code injection support for games written in C#",
   "main": "./src/index.js",
   "scripts": {
-    "buildDev": "node build.js Debug && copyfiles -f Build/Debug/*.* dist/",
-    "build": "node build.js && copyfiles -f Build/Release/*.* dist/",
+    "buildDev": "node build.js Debug && copyfiles -f Build/Debug/*.* dist/ && copyfiles -f lib/VortexUnity.dll dist/",
+    "build": "node build.js && copyfiles -f Build/Release/*.* dist/ && copyfiles -f lib/VortexUnity.dll dist/",
     "postinstall": "npm run build"
   },
   "typings": "./src/index.d.ts",
