@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
+
+using VortexHarmonyInstaller.Delegates;
 
 using VortexHarmonyInstaller;
 
@@ -14,6 +17,7 @@ namespace VortexUnity
         internal const string UI_BUNDLE_NAME = "vortexui";
         internal const string VORTEX_OVERLAY_PREFAB_NAME = "VortexOverlay";
         internal const string BUTTON_TEX = "buttonTexture";
+        internal const string ASSEMBLY_NAME = "VortexUnity.dll";
     }
 
     // Exposed for mods to use.
@@ -103,6 +107,9 @@ namespace VortexUnity
         private static Dictionary<Enums.EGUIStyleID, GUIStyle> m_dictStyleDefs = new Dictionary<Enums.EGUIStyleID, GUIStyle>();
         public static Dictionary<Enums.EGUIStyleID, GUIStyle> StyleDefs { get { return m_dictStyleDefs; } }
 
+        private static Assembly m_UIAssembly = null;
+        public static Assembly UIAssembly { get { return m_UIAssembly; } }
+
         private static VortexUI m_Instance = null;
         public static VortexUI Instance { get { return m_Instance; } }
 
@@ -110,6 +117,8 @@ namespace VortexUnity
         internal static AssetBundle m_UIAssetBundle = null;
 
         internal static GameObject m_goOverlay = null;
+
+        internal static GameObject m_goVortexUI = null;
 
         private static List<Texture2D> m_liTextures = new List<Texture2D>();
         public static List<Texture2D> BundledTextures { get { return m_liTextures; } }
@@ -142,14 +151,17 @@ namespace VortexUnity
 
         internal static void Load(List<IExposedMod> exposedEntries)
         {
-            string strFolder = Directory.GetCurrentDirectory();
+            string strFolder = VortexPatcher.CurrentDataPath;
+            string strAssemlyPath = Path.Combine(strFolder, Constants.ASSEMBLY_NAME);
+            m_UIAssembly = Assembly.LoadFile(strAssemlyPath);
             m_UIAssetBundle = AssetBundle.LoadFromFile(Path.Combine(strFolder, m_strAssetPath, Constants.UI_BUNDLE_NAME));
             if (null == m_UIAssetBundle)
                 throw new FileNotFoundException("Couldn't load UI asset bundle");
 
             m_liTextures = m_UIAssetBundle.LoadAllAssets<Texture2D>().ToList();
 
-            new GameObject(typeof(VortexUI).FullName, typeof(VortexUI));
+            m_goVortexUI = new GameObject(typeof(VortexUI).FullName, typeof(VortexUI));
+
             m_liMods = exposedEntries;
         }
 
@@ -404,17 +416,22 @@ namespace VortexUnity
                 return;
 
             m_bIsOpen = isOpen;
-            LoadVortexOverlay(isOpen);
+
+            try
+            {
+                LoadVortexOverlay(isOpen);
+            }
+            catch (Exception e)
+            {
+                // We didn't manage to load the Overlay.
+                //  That's fine, keep going.
+                LoggerDelegates.LogInfo(e);
+            }
 
             if (isOpen)
             {
                 Cursor.visible = true;
                 Cursor.lockState = CursorLockMode.None;
-            }
-            else
-            {
-                Cursor.visible = false;
-                Cursor.lockState = CursorLockMode.Locked;
             }
         }
 
@@ -426,6 +443,13 @@ namespace VortexUnity
                 m_goOverlay = Instantiate(vortexOverlay) as GameObject;
                 m_goOverlay.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
                 m_goOverlay.GetComponent<Canvas>().sortingOrder = Int16.MaxValue;
+
+                var children = m_goOverlay.GetComponentsInChildren<RectTransform>();
+                var logo = children.Where(child => child.name == "VortexLogo").SingleOrDefault();
+                var panel = children.Where(child => child.name == "VortexPanel").SingleOrDefault();
+
+                logo.gameObject.AddComponent(typeof(LogoFade));
+                panel.gameObject.AddComponent(typeof(ScrollScript));
 
                 DontDestroyOnLoad(m_goOverlay);
             }
