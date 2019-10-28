@@ -593,6 +593,9 @@ namespace VortexHarmonyExec
 
             foreach (string strFile in files)
                 File.Delete(strFile);
+
+            if (m_bInjectGUI && Directory.Exists(m_strBundledAssetsDest))
+                Directory.Delete(m_strBundledAssetsDest, true);
         }
 
         /// <summary>
