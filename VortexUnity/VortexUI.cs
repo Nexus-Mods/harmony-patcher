@@ -96,6 +96,12 @@ namespace VortexUnity
         public static GUIStyle settings { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.SETTINGS]; } }
     }
 
+    public struct SCursorStatus
+    {
+        public CursorLockMode LockState;
+        public bool IsCursorActive;
+    }
+
     public class VortexUI : MonoBehaviour
     {
         #region statics
@@ -127,6 +133,8 @@ namespace VortexUnity
 
         internal static Vector2 m_v2ModsScrollPos = new Vector2();
         internal static Vector2 m_v2SettingsScrollPos = new Vector2();
+
+        internal static SCursorStatus m_CursorStatus;
 
         internal static bool Up { get { return Hotkey.Up; } }
         internal static bool Down { get { return Hotkey.Down; } }
@@ -176,6 +184,7 @@ namespace VortexUnity
         private void Start()
         {
             CalculateWindowPos();
+            m_CursorStatus = new SCursorStatus() { LockState = Cursor.lockState, IsCursorActive = Cursor.visible };
         }
 
         private void Update()
@@ -432,8 +441,21 @@ namespace VortexUnity
 
             if (isOpen)
             {
+                // Keep track of the initial cursor settings.
+                m_CursorStatus.IsCursorActive = Cursor.visible;
+                m_CursorStatus.LockState = Cursor.lockState;
+
+                // Stop time and ensure that the cursor is enabled.
+                Time.timeScale = 0f;
                 Cursor.visible = true;
                 Cursor.lockState = CursorLockMode.None;
+            }
+            else
+            {
+                // Re-instate the original cursort settings and resume time.
+                Time.timeScale = 1f;
+                Cursor.visible = m_CursorStatus.IsCursorActive;
+                Cursor.lockState = m_CursorStatus.LockState;
             }
         }
 

@@ -67,7 +67,8 @@ namespace VortexHarmonyInstaller
 
             if (null == strUnityEngine)
             {
-                Logger.Error("Unable to find the game's managed datapath, please re-install the game");
+                // We can't use the logger at this point as it wasn't configured yet...
+                Console.WriteLine("Unable to find the game's managed datapath, please re-install the game");
                 return;
             }
 
