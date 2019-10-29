@@ -107,6 +107,8 @@ namespace VortexUnity
         private static Dictionary<Enums.EGUIStyleID, GUIStyle> m_dictStyleDefs = new Dictionary<Enums.EGUIStyleID, GUIStyle>();
         public static Dictionary<Enums.EGUIStyleID, GUIStyle> StyleDefs { get { return m_dictStyleDefs; } }
 
+        private static Enums.EGUIStyleID m_windowStyle = Enums.EGUIStyleID.TRANSPARENT;
+
         private static Assembly m_UIAssembly = null;
         public static Assembly UIAssembly { get { return m_UIAssembly; } }
 
@@ -155,10 +157,10 @@ namespace VortexUnity
             string strAssemlyPath = Path.Combine(strFolder, Constants.ASSEMBLY_NAME);
             m_UIAssembly = Assembly.LoadFile(strAssemlyPath);
             m_UIAssetBundle = AssetBundle.LoadFromFile(Path.Combine(strFolder, m_strAssetPath, Constants.UI_BUNDLE_NAME));
-            if (null == m_UIAssetBundle)
-                throw new FileNotFoundException("Couldn't load UI asset bundle");
-
-            m_liTextures = m_UIAssetBundle.LoadAllAssets<Texture2D>().ToList();
+            if (null != m_UIAssetBundle)
+                m_liTextures = m_UIAssetBundle.LoadAllAssets<Texture2D>().ToList();
+            else
+                m_windowStyle = Enums.EGUIStyleID.WINDOW;
 
             m_goVortexUI = new GameObject(typeof(VortexUI).FullName, typeof(VortexUI));
 
@@ -174,7 +176,6 @@ namespace VortexUnity
         private void Start()
         {
             CalculateWindowPos();
-            ToggleWindow(true);
         }
 
         private void Update()
@@ -193,7 +194,7 @@ namespace VortexUnity
                 ToggleWindow();
 
             if (IsOpen && Input.GetKey(KeyCode.Escape))
-                ToggleWindow();
+                ToggleWindow(false);
         }
 
         private void FixedUpdate()
@@ -319,7 +320,7 @@ namespace VortexUnity
                     GUILayout.MinWidth(Screen.width),
                 };
 
-                m_rectWindow = GUILayout.Window(0, m_rectWindow, DrawWindow, "", StyleDefs[Enums.EGUIStyleID.TRANSPARENT], layoutOptions);
+                m_rectWindow = GUILayout.Window(0, m_rectWindow, DrawWindow, "", StyleDefs[m_windowStyle], layoutOptions);
             }
         }
 
@@ -419,7 +420,8 @@ namespace VortexUnity
 
             try
             {
-                LoadVortexOverlay(isOpen);
+                if (null != m_UIAssetBundle)
+                    LoadVortexOverlay(isOpen);
             }
             catch (Exception e)
             {

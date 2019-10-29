@@ -573,11 +573,22 @@ namespace VortexHarmonyExec
                     Path.Combine(m_strExtensionPath, Constants.UI_BUNDLE_FILENAME + ".manifest"),
                 };
 
-                Directory.CreateDirectory(m_strBundledAssetsDest);
-                foreach (string file in uiFiles)
+                try
                 {
-                    string strDest = Path.Combine(m_strBundledAssetsDest, Path.GetFileName(file));
-                    File.Copy(file, strDest, true);
+                    Directory.CreateDirectory(m_strBundledAssetsDest);
+                    foreach (string file in uiFiles)
+                    {
+                        string strDest = Path.Combine(m_strBundledAssetsDest, Path.GetFileName(file));
+                        File.Copy(file, strDest, true);
+                    }
+                }
+                catch (Exception e)
+                {
+                    // This is fine, some extenions might not provide bundled UI assets.
+                    //  all this means is that the in-game UI will not look that great.
+                    string strMessage = "Extension path did not provide bundled UI assets";
+                    string strResponse = JSONResponse.CreateSerializedResponse(strMessage, 0, e);
+                    Console.Error.WriteLine(strResponse);
                 }
             }
         }
