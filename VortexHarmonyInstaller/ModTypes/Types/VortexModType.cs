@@ -82,14 +82,9 @@ namespace VortexHarmonyInstaller.ModTypes
                 {
                     VortexMod mod = VortexMod.GetModEntry(data, VortexPatcher.CurrentDataPath);
                     object[] param = new object[] { mod };
-                    try
-                    {
-                        methodInfo.Invoke(null, param);
-                    }
-                    catch (Exception exc)
-                    {
-                        VortexPatcher.Logger.Error("Failed to invoke starter method", exc);
-                    }
+
+                    methodInfo.Invoke(null, param);
+                    AddExposedMod(mod);
                 } 
                 else
                 {
