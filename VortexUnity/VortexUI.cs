@@ -277,29 +277,30 @@ namespace VortexUnity
 
             Texture2D toggle_on = null;
             Texture2D toggle_off = null;
+
+            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE] = new GUIStyle(GUI.skin.toggle);
             if (m_liTextures.Count > 0)
             {
                 toggle_on = m_liTextures.Find(texture => texture.name.StartsWith("toggle_on"));
                 toggle_off = m_liTextures.Find(texture => texture.name.StartsWith("toggle_off"));
-            }
 
-            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE] = new GUIStyle(GUI.skin.toggle);
-            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].border = Util.RectOffset(0);
-            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].overflow = Util.RectOffset(0);
-            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].padding = Util.RectOffset(10, 9);
-            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].imagePosition = ImagePosition.ImageOnly;
-            if  ((toggle_on != null) && (toggle_off != null))
-            {
-                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].normal.background = toggle_off;
-                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onNormal.background = toggle_on;
-                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].hover.background = toggle_off;
-                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onHover.background = toggle_on;
-                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].active.background = toggle_off;
-                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onActive.background = toggle_on;
+                if ((toggle_on != null) && (toggle_off != null))
+                {
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE] = new GUIStyle(GUI.skin.toggle);
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].border = Util.RectOffset(0);
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].overflow = Util.RectOffset(0);
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].padding = Util.RectOffset(10, 8);
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].imagePosition = ImagePosition.ImageOnly;
+
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].normal.background = toggle_off;
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onNormal.background = toggle_on;
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].hover.background = toggle_off;
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onHover.background = toggle_on;
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].active.background = toggle_off;
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onActive.background = toggle_on;
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onActive.background = toggle_on;
+                }
             }
-            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onActive.background = toggle_on;
-            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].font = m_GlobalFont;
-            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].fontSize = m_iGlobalFontSize;
 
             m_dictStyleDefs[Enums.EGUIStyleID.BUTTON] = new GUIStyle();
             m_dictStyleDefs[Enums.EGUIStyleID.BUTTON].name = "button";
