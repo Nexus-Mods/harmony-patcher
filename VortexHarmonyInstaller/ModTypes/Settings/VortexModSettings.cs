@@ -71,7 +71,8 @@ namespace VortexHarmonyInstaller.ModTypes
             {
                 try
                 {
-                    T deserialized = JsonConvert.DeserializeObject<T>(strSettingsPath);
+                    string fileContents = File.ReadAllText(strSettingsPath);
+                    T deserialized = JsonConvert.DeserializeObject<T>(fileContents);
                     return deserialized;
                 }
                 catch (Exception e)
