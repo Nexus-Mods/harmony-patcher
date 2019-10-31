@@ -26,7 +26,7 @@ namespace VortexUnity
         public enum EGUIStyleID
         {
             TITLE, H1, H2, WINDOW, BUTTON, SETTINGS,
-            TRANSPARENT, SELECTED_BUTTON, ACTION_BUTTON,
+            TRANSPARENT, SELECTED_BUTTON, ACTION_BUTTON, TOGGLE,
         };
     }
 
@@ -156,7 +156,7 @@ namespace VortexUnity
 
         private Resolution m_CurrentResolution;
 
-        public int m_iGlobalFontSize = 16;
+        public int m_iGlobalFontSize = 22;
         public Font m_GlobalFont;
 
         internal static void Load(List<IExposedMod> exposedEntries)
@@ -256,6 +256,7 @@ namespace VortexUnity
             m_dictStyleDefs[Enums.EGUIStyleID.H1] = new GUIStyle();
             m_dictStyleDefs[Enums.EGUIStyleID.H1].name = "h1";
             m_dictStyleDefs[Enums.EGUIStyleID.H1].font = m_GlobalFont;
+            m_dictStyleDefs[Enums.EGUIStyleID.H1].fontSize = m_iGlobalFontSize;
             m_dictStyleDefs[Enums.EGUIStyleID.H1].padding = Util.RectOffset(8);
             m_dictStyleDefs[Enums.EGUIStyleID.H1].fontStyle = FontStyle.Bold;
             m_dictStyleDefs[Enums.EGUIStyleID.H1].normal.textColor = Color.white;
@@ -264,6 +265,7 @@ namespace VortexUnity
             m_dictStyleDefs[Enums.EGUIStyleID.H2] = new GUIStyle();
             m_dictStyleDefs[Enums.EGUIStyleID.H2].name = "h2";
             m_dictStyleDefs[Enums.EGUIStyleID.H2].font = m_GlobalFont;
+            m_dictStyleDefs[Enums.EGUIStyleID.H2].fontSize = m_iGlobalFontSize;
             m_dictStyleDefs[Enums.EGUIStyleID.H2].padding = Util.RectOffset(5);
             m_dictStyleDefs[Enums.EGUIStyleID.H2].fontStyle = FontStyle.Bold;
             m_dictStyleDefs[Enums.EGUIStyleID.H2].normal.textColor = Color.white;
@@ -273,9 +275,36 @@ namespace VortexUnity
             Texture2D activeBtnTexture = Util.MakeTexture(1, 1, new Color(0.62f, 0.62f, 0.62f, 1f));
             Texture2D focusedBtnTexture = Util.MakeTexture(1, 1, new Color(1f, 1f, 1f, 1f));
 
+            Texture2D toggle_on = null;
+            Texture2D toggle_off = null;
+            if (m_liTextures.Count > 0)
+            {
+                toggle_on = m_liTextures.Find(texture => texture.name.StartsWith("toggle_on"));
+                toggle_off = m_liTextures.Find(texture => texture.name.StartsWith("toggle_off"));
+            }
+
+            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE] = new GUIStyle(GUI.skin.toggle);
+            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].border = Util.RectOffset(0);
+            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].overflow = Util.RectOffset(0);
+            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].padding = Util.RectOffset(10, 9);
+            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].imagePosition = ImagePosition.ImageOnly;
+            if  ((toggle_on != null) && (toggle_off != null))
+            {
+                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].normal.background = toggle_off;
+                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onNormal.background = toggle_on;
+                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].hover.background = toggle_off;
+                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onHover.background = toggle_on;
+                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].active.background = toggle_off;
+                m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onActive.background = toggle_on;
+            }
+            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onActive.background = toggle_on;
+            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].font = m_GlobalFont;
+            m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].fontSize = m_iGlobalFontSize;
+
             m_dictStyleDefs[Enums.EGUIStyleID.BUTTON] = new GUIStyle();
             m_dictStyleDefs[Enums.EGUIStyleID.BUTTON].name = "button";
             m_dictStyleDefs[Enums.EGUIStyleID.BUTTON].font = m_GlobalFont;
+            m_dictStyleDefs[Enums.EGUIStyleID.BUTTON].fontSize = m_iGlobalFontSize;
             m_dictStyleDefs[Enums.EGUIStyleID.BUTTON].normal.background = normalBtnTexture;
             m_dictStyleDefs[Enums.EGUIStyleID.BUTTON].normal.textColor = Color.black;
             m_dictStyleDefs[Enums.EGUIStyleID.BUTTON].hover.background = hoverBtnTexture;
