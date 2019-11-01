@@ -33,7 +33,7 @@ namespace VortexUnity
 
         void Update()
         {
-            float fNewPos = Mathf.Repeat(Time.time * m_fScrollSpeed, m_rectWidth);
+            float fNewPos = Mathf.Repeat(Time.realtimeSinceStartup * m_fScrollSpeed, m_rectWidth);
             transform.position = m_v2InitialPos + (Vector2.right * fNewPos);
         }
     }

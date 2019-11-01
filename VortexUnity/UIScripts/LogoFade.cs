@@ -2,6 +2,8 @@
 using UnityEngine.UI;
 using UnityEngine;
 
+using VortexHarmonyInstaller.Delegates;
+
 namespace VortexUnity
 {
     public class LogoFade : MonoBehaviour
@@ -21,16 +23,14 @@ namespace VortexUnity
             m_InitialColor = m_LogoRef.color;
             m_WantedColor = new Color(m_InitialColor.r, m_InitialColor.g, m_InitialColor.b, MIN_ALPHA);
             if (m_LogoRef != null)
-            {
                 StartCoroutine(FadeLoop());
-            }
         }
 
         private IEnumerator FadeLoop()
         {
             while (true)
             {
-                float t = (Mathf.Sin(Time.time - m_fStartTime) * FADE_TIME);
+                float t = (Mathf.Sin(Time.realtimeSinceStartup - m_fStartTime) * FADE_TIME);
                 m_LogoRef.color = Color.Lerp(m_InitialColor, m_WantedColor, t);
 
                 yield return null;
