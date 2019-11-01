@@ -156,8 +156,14 @@ namespace VortexUnity
 
         private Resolution m_CurrentResolution;
 
-        public int m_iGlobalFontSize = 22;
-        public Font m_GlobalFont;
+        private static int m_iGlobalFontSize = 22;
+        public static int GlobalFontSize {
+            get { return m_iGlobalFontSize; }
+            set { m_iGlobalFontSize = value; }
+        }
+
+        private static Font m_GlobalFont;
+        public static Font GlobalFont { get { return m_GlobalFont; } }
 
         internal static void Load(List<IExposedMod> exposedEntries)
         {
@@ -291,6 +297,7 @@ namespace VortexUnity
                     m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].overflow = Util.RectOffset(0);
                     m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].padding = Util.RectOffset(10, 8);
                     m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].imagePosition = ImagePosition.ImageOnly;
+                    m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].stretchWidth = false;
 
                     m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].normal.background = toggle_off;
                     m_dictStyleDefs[Enums.EGUIStyleID.TOGGLE].onNormal.background = toggle_on;
