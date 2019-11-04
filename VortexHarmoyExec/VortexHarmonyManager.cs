@@ -62,7 +62,7 @@ namespace VortexHarmonyExec
             {
                 { "h", "Shows this message and closes program", h => bShowHelp = h != null },
                 { "g|extension=", "Path to the game's extension folder", g => m_strExtensionPath = g },
-                { "m|managed=", "Path to the game's managed folder.", m => m_dataPath = m },
+                { "m|managed=", "Path to the game's managed folder/game assembly", m => m_dataPath = m },
                 { "i|install=", "Path to Harmony Patcher's build folder.", i => m_installPath = i },
                 { "e|entry=", "This game's entry point formatted as: 'Namespace.ClassName::MethodName'", e => m_entryPoint = e },
                 { "r", "Will remove", r => bRemovePatch = r != null },

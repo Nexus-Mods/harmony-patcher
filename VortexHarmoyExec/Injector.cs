@@ -321,11 +321,17 @@ namespace VortexHarmonyExec
         {
             try
             {
-                m_strDataPath = strDataPath;
+                m_strDataPath = (strDataPath.EndsWith(".dll"))
+                    ? Path.GetDirectoryName(strDataPath)
+                    : strDataPath;
+
                 m_strBundledAssetsDest = Path.Combine(m_strDataPath, "VortexBundles", "UI");
                 m_strExtensionPath = VortexHarmonyManager.ExtensionPath;
                 m_strEntryPoint = strEntryPoint;
-                m_strGameAssemblyPath = Path.Combine(strDataPath, Constants.UNITY_ASSEMBLY_LIB);
+
+                m_strGameAssemblyPath = (strDataPath.EndsWith(".dll"))
+                    ? strDataPath
+                    : Path.Combine(strDataPath, Constants.UNITY_ASSEMBLY_LIB);
 
                 m_bInjectGUI = m_strGameAssemblyPath.EndsWith(Constants.UNITY_ASSEMBLY_LIB);
                 if (m_bInjectGUI)
@@ -334,8 +340,8 @@ namespace VortexHarmonyExec
                     _LIB_FILES[_LIB_FILES.Length - 1] = "VortexUnity.dll";
                 }
 
-                m_strModsDirectory = Path.Combine(strDataPath, Constants.MODS_DIRNAME);
-                m_resolver = new MissingAssemblyResolver(strDataPath);
+                m_strModsDirectory = Path.Combine(m_strDataPath, Constants.MODS_DIRNAME);
+                m_resolver = new MissingAssemblyResolver(m_strDataPath);
             }
             catch (Exception exc)
             {
