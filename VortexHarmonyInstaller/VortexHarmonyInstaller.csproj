@@ -124,7 +124,4 @@
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>echo f | xcopy "$(TargetPath)" "D:\Projects\harmony-patcher\lib" /C /Y</PostBuildEvent>
-  </PropertyGroup>
 </Project>
