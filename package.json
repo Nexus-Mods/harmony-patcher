@@ -1,11 +1,11 @@
 {
   "name": "harmony-support",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Code injection support for games written in C#",
   "main": "./src/index.js",
   "scripts": {
-    "buildDev": "node build.js Debug && copyfiles -f Build/Debug/*.* dist/ && copyfiles -f lib/VortexUnity.dll dist/",
-    "build": "node build.js && copyfiles -f Build/Release/*.* dist/ && copyfiles -f lib/VortexUnity.dll dist/",
+    "buildDev": "node build.js Debug",
+    "build": "node build.js",
     "postinstall": "npm run build"
   },
   "typings": "./src/index.d.ts",
