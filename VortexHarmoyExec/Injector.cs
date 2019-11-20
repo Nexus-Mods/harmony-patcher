@@ -333,6 +333,9 @@ namespace VortexHarmonyExec
                     ? strDataPath
                     : Path.Combine(strDataPath, Constants.UNITY_ASSEMBLY_LIB);
 
+                if (!File.Exists(m_strGameAssemblyPath))
+                    throw new FileNotFoundException($"{m_strGameAssemblyPath} does not exist");
+
                 m_bInjectGUI = m_strGameAssemblyPath.EndsWith(Constants.UNITY_ASSEMBLY_LIB);
                 if (m_bInjectGUI)
                 {
@@ -345,8 +348,13 @@ namespace VortexHarmonyExec
             }
             catch (Exception exc)
             {
-                Enums.EErrorCode errorCode = Enums.EErrorCode.INVALID_ARGUMENT;
-                string strMessage = "Injector received invalid argument.";
+                bool isAssemblyMissing = (exc is FileNotFoundException);
+                Enums.EErrorCode errorCode = isAssemblyMissing
+                    ? Enums.EErrorCode.MISSING_FILE
+                    : Enums.EErrorCode.INVALID_ARGUMENT;
+                string strMessage = isAssemblyMissing
+                    ? "The game assembly is missing!"
+                    : "Injector received invalid argument.";
                 string strResponse = JSONResponse.CreateSerializedResponse(strMessage, errorCode, exc);
                 Console.Error.WriteLine(strResponse);
                 Environment.Exit((int)(errorCode));
@@ -511,7 +519,8 @@ namespace VortexHarmonyExec
                 string strTempFile = m_strGameAssemblyPath + Constants.VORTEX_BACKUP_TAG;
                 File.Copy(m_strGameAssemblyPath, strTempFile, true);
 
-                using (AssemblyDefinition unityAssembly = AssemblyDefinition.ReadAssembly(strTempFile, new ReaderParameters { ReadWrite = true }))
+                using (AssemblyDefinition unityAssembly = AssemblyDefinition.ReadAssembly(strTempFile,
+                    new ReaderParameters { ReadWrite = true, AssemblyResolver = m_resolver }))
                 {
                     if (!IsInjected(unityAssembly, entryPoint))
                         return;
@@ -608,8 +617,16 @@ namespace VortexHarmonyExec
                 .Where(file => _LIB_FILES.Contains(Path.GetFileName(file)))
                 .ToArray();
 
-            foreach (string strFile in files)
-                File.Delete(strFile);
+            foreach (string strFile in files) {
+                try {
+                    // Try to re-instate backups if they exist.
+                    Util.RestoreBackup(strFile);
+                }
+                catch (Exception exc) {
+                    if (exc is FileNotFoundException)
+                        File.Delete(strFile);
+                }
+            }
 
             if (m_bInjectGUI && Directory.Exists(m_strBundledAssetsDest))
                 Directory.Delete(m_strBundledAssetsDest, true);
