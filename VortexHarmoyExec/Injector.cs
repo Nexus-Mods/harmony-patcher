@@ -157,9 +157,24 @@ namespace VortexHarmonyExec
         {
             string strBackupFile = strFilePath + Constants.VORTEX_BACKUP_TAG;
             if (!File.Exists(strBackupFile))
-                throw new FileNotFoundException(string.Format("Backup is missing {0}", strBackupFile));
+            {
+                string strResponse = JSONResponse.CreateSerializedResponse(
+                    string.Format("Backup is missing {0}", strBackupFile),
+                    Enums.EErrorCode.FILE_OPERATION_ERROR);
+                Console.Error.WriteLine(strResponse);
+                return;
+            }
 
-            File.Copy(strBackupFile, strFilePath, true);
+            try
+            {
+                File.Copy(strBackupFile, strFilePath, true);
+                File.Delete(strBackupFile);
+            }
+            catch (Exception exc)
+            {
+                string strResponse = JSONResponse.CreateSerializedResponse(exc.Message, Enums.EErrorCode.FILE_OPERATION_ERROR, exc);
+                Console.Error.WriteLine(strResponse);
+            }
         }
 
         internal static void DeleteTemp(string strFilePath)
@@ -396,7 +411,7 @@ namespace VortexHarmonyExec
                     }
 
                     // Back up the game assembly before we do anything.
-                    Util.BackupFile(m_strGameAssemblyPath);
+                    Util.BackupFile(m_strGameAssemblyPath, true);
 
                     AssemblyDefinition vrtxPatcher = AssemblyDefinition.ReadAssembly(Path.Combine(m_strDataPath, Constants.VORTEX_LIB));
                     MethodDefinition patcherMethod = vrtxPatcher.MainModule.GetType(patcherPoints[0]).Methods.First(x => x.Name == patcherPoints[1]);
@@ -443,6 +458,7 @@ namespace VortexHarmonyExec
                     Util.DeleteTemp(strTempFile);
 
                 Util.RestoreBackup(m_strGameAssemblyPath);
+
                 if (exc is FileNotFoundException) 
                     errorCode = Enums.EErrorCode.MISSING_FILE;
                 else if (exc is EntryPointNotFoundException)
@@ -544,6 +560,16 @@ namespace VortexHarmonyExec
                         instr.Operand.ToString().Contains(Constants.VORTEX_PATCH_METHOD));
 
                     methodDefinition.Body.Instructions.Remove(patcherInstr);
+
+                    if (m_bInjectGUI)
+                    {
+                        Instruction uiPatchInstr = instructions.FirstOrDefault(instr =>
+                            instr.Operand.ToString().Contains(Constants.VORTEX_UNITY_GUI_PATCH));
+
+                        if (uiPatchInstr != null)
+                            methodDefinition.Body.Instructions.Remove(uiPatchInstr);
+                    }
+
                     unityAssembly.Write(m_strGameAssemblyPath);
                 }
             }
