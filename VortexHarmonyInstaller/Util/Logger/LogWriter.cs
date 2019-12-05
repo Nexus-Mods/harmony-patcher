@@ -1,11 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
-
-using ObjectDumper;
 
 namespace VortexHarmonyInstaller.Util
 {
@@ -44,8 +38,11 @@ namespace VortexHarmonyInstaller.Util
                     using (StreamWriter writer = new StreamWriter(fs))
                     {
                         string logEntry = VortexPatcher.Logger.Dequeue();
-                        Console.WriteLine(logEntry);
-                        writer.WriteLine(logEntry);
+                        if (!string.IsNullOrEmpty(logEntry))
+                        {
+                            Console.WriteLine(logEntry);
+                            writer.WriteLine(logEntry);
+                        }
                     }
                 }
                 catch (Exception exc)

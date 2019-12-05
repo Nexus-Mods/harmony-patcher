@@ -8,11 +8,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Reflection;
 
-using ObjectDumper;
-
-using VortexHarmonyInstaller.Util;
-using System.Collections.Generic;
-
 namespace VortexHarmonyInstaller.ModTypes
 {
     internal partial class Constants
@@ -207,9 +202,7 @@ namespace VortexHarmonyInstaller.ModTypes
 
         public string GetModName()
         {
-            VortexPatcher.Logger.Info(m_ModData.Dump("mod data dump"));
             UMMData data = (m_ModData as UMMData);
-            VortexPatcher.Logger.Info(data.Dump("umm data dump"));
             if (data == null)
                 throw new NullReferenceException("Invalid UMM Data");
 

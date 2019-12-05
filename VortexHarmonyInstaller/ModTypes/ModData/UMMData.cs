@@ -264,7 +264,6 @@ namespace VortexHarmonyInstaller.ModTypes
             string fileName = Path.GetFileName(strManifestPath);
             try
             {
-                LoggerDelegates.LogInfo("7");
                 Console.WriteLine(strManifestPath);
                 if (!File.Exists(strManifestPath))
                 {
@@ -283,7 +282,6 @@ namespace VortexHarmonyInstaller.ModTypes
                     return false;
             }
             catch (Exception exc) {
-                LoggerDelegates.LogError("8", exc);
                 return false;
             }
         }
