@@ -228,8 +228,7 @@ namespace VortexHarmonyInstaller.ModTypes
                 if (m_ModAssembly == null)
                 {
                     VortexPatcher.Logger.Info("Mod assembly is null");
-                    string modsFolder = Path.Combine(VortexPatcher.CurrentDataPath, "VortexMods");
-                    string modAssemblyPath = Directory.GetFiles(modsFolder, "*.dll", SearchOption.AllDirectories)
+                    string modAssemblyPath = Directory.GetFiles(VortexPatcher.CurrentModsPath, "*.dll", SearchOption.AllDirectories)
                         .Where(file => file.EndsWith(data.AssemblyName))
                         .SingleOrDefault();
                     m_ModAssembly = Assembly.LoadFile(modAssemblyPath);

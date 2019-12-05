@@ -36,18 +36,26 @@ const PATCHER_ERRORS = {
 //
 //  -r -> When provided, will inform the injector that we wish to remove
 //    the patcher function.
-function runPatcher(extensionPath, dataPath, entryPoint, remove) {
+//
+//  -g -> The path to the location of the Vortex game extension using the patcher.
+//
+//  -i -> Path to the libraries which the patcher is using.
+//
+//  -x -> Location where we're planning to store our mods.
+function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath) {
   let lastError;
   const wstream = fs.createWriteStream(LOG_FILE_PATH);
   //const wstream = fs.createWriteStream('log.log');
   // -m "D:\Games\UntitledGooseGame\Untitled_Data\Managed" -e "GameManager::Awake" -r
   return new Promise((resolve, reject) => {
     let patcher;
+    modsPath = !!modsPath ? modsPath : path.join(dataPath, 'VortexMods');
     try {
       patcher = spawn(EXEC_PATH, ['-g', extensionPath,
                                   '-m', dataPath,
                                   '-e', entryPoint,
                                   '-i', MODULE_PATH,
+                                  '-x', modsPath,
                                   !!remove ? '-r' : '']);
     } catch (err) {
       return reject(err);

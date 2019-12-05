@@ -67,14 +67,18 @@ namespace VortexHarmonyInstaller
         private static string m_strDataPath;
         public static string CurrentDataPath { get { return m_strDataPath; } }
 
+        // Where we expect to find the mods.
+        private static string m_modsPath;
+        public static string CurrentModsPath { get { return m_modsPath; } }
+
         private static void OnModsInjectionComplete(List<IExposedMod> exposedMods)
         {
             ModsInjectionComplete?.Invoke(exposedMods);
         }
 
-        public static void Patch()
+        public static void Patch(string modsPath)
         {
-            // Look up the UnityEngine file
+            m_modsPath = modsPath;
             string strCurrentDir = Directory.GetCurrentDirectory();
             string strUnityEngine = Directory.GetFiles(strCurrentDir, "*.dll", SearchOption.AllDirectories)
                 .Where(file => file.EndsWith(Constants.UNITY_ENGINE_LIB))
@@ -93,10 +97,8 @@ namespace VortexHarmonyInstaller
             string strAssemblyPath = Path.Combine(CurrentDataPath, Constants.INSTALLER_ASSEMBLY_NAME + ".dll");
             m_InstallerAssembly = AssemblyDefinition.ReadAssembly(strAssemblyPath);
 
-            string modsFolder = Path.Combine(CurrentDataPath, "VortexMods");
-
-            // All dll files within the VortexMods folder are considered mods.
-            FileInfo[] modLibFiles = new DirectoryInfo(modsFolder).GetFiles("*.dll", SearchOption.AllDirectories);
+            // All dll files within the provided mods folder are considered mod entries.
+            FileInfo[] modLibFiles = new DirectoryInfo(m_modsPath).GetFiles("*.dll", SearchOption.AllDirectories);
             ResolveModList(modLibFiles);
 
             Logger.Info("Starting to inject mods");
@@ -121,7 +123,6 @@ namespace VortexHarmonyInstaller
 
         public static void ResolveModList(FileInfo[] modFiles)
         {
-            Logger.Info("WHAAAT");
             foreach (FileInfo dll in modFiles)
             {
                 var modType = IdentifyModType(dll.DirectoryName);

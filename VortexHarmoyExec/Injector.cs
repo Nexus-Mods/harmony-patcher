@@ -37,9 +37,6 @@ namespace VortexHarmonyExec
         internal const string UNITY_ASSEMBLY_LIB = "Assembly-CSharp.dll";
         //internal const string UNITY_ASSEMBLY_LIB = "TestAssembly.dll";
 
-        // Mods are going to be stored here.
-        internal const string MODS_DIRNAME = "VortexMods";
-
         // Suffix identifying Vortex's backup files.
         internal const string VORTEX_BACKUP_TAG = "_vortex_assembly_backup";
 
@@ -293,7 +290,6 @@ namespace VortexHarmonyExec
         private readonly bool m_bInjectGUI;
         private readonly string m_strExtensionPath;
         private readonly string m_strDataPath;
-        private readonly string m_strModsDirectory;
         private string m_strEntryPoint;
         private string m_strGameAssemblyPath;
         private MissingAssemblyResolver m_resolver = null;
@@ -352,7 +348,6 @@ namespace VortexHarmonyExec
                     _LIB_FILES[_LIB_FILES.Length - 1] = "VortexUnity.dll";
                 }
 
-                m_strModsDirectory = Path.Combine(m_strDataPath, Constants.MODS_DIRNAME);
                 m_resolver = new MissingAssemblyResolver(m_strDataPath);
             }
             catch (Exception exc)
@@ -421,14 +416,16 @@ namespace VortexHarmonyExec
                         throw new EntryPointNotFoundException("Invalid entry point");
                     }
 
-                    methodDefinition.Body.GetILProcessor().InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(patcherMethod)));
+                    ILProcessor ilProcessor = methodDefinition.Body.GetILProcessor();
+                    ilProcessor.InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Ldstr, VortexHarmonyManager.ModsFolder));
+                    ilProcessor.InsertBefore(methodDefinition.Body.Instructions[1], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(patcherMethod)));
                     if (m_bInjectGUI)
                     {
                         try
                         {
                             AssemblyDefinition guiPatcher = AssemblyDefinition.ReadAssembly(Path.Combine(m_strDataPath, Constants.VORTEX_GUI_LIB));
                             MethodDefinition guiMethod = guiPatcher.MainModule.GetType(unityPatcher[0]).Methods.First(x => x.Name == unityPatcher[1]);
-                            methodDefinition.Body.GetILProcessor().InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(guiMethod)));
+                            ilProcessor.InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(guiMethod)));
                         }
                         catch (Exception exc)
                         {
@@ -593,7 +590,7 @@ namespace VortexHarmonyExec
                 throw new DirectoryNotFoundException(string.Format("Datapath {0} does not exist", m_strDataPath));
 
             string strLibPath = VortexHarmonyManager.InstallPath;
-            Directory.CreateDirectory(m_strModsDirectory);
+            Directory.CreateDirectory(VortexHarmonyManager.ModsFolder);
             string[] files = Directory.GetFiles(strLibPath, "*", SearchOption.TopDirectoryOnly)
                 .Where(file => _LIB_FILES.Contains(Path.GetFileName(file)))
                 .ToArray();

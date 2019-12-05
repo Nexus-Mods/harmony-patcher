@@ -29,6 +29,9 @@ namespace VortexHarmonyExec
 
         private static string m_entryPoint;
 
+        private static string m_modsfolder;
+        public static string ModsFolder { get { return m_modsfolder; } }
+
         public static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
         {
             // check for assemblies already loaded
@@ -41,7 +44,7 @@ namespace VortexHarmonyExec
             string filename = args.Name.Split(',')[0] + ".dll".ToLower();
             string asmFile = Path.Combine(".\\lib", filename);
 
-            return System.Reflection.Assembly.LoadFrom(asmFile);
+            return Assembly.LoadFrom(asmFile);
         }
 
         static void RunOptions(string[] args)
@@ -55,7 +58,8 @@ namespace VortexHarmonyExec
                 { "m|managed=", "Path to the game's managed folder/game assembly", m => m_dataPath = m },
                 { "i|install=", "Path to Harmony Patcher's build folder.", i => m_installPath = i },
                 { "e|entry=", "This game's entry point formatted as: 'Namespace.ClassName::MethodName'", e => m_entryPoint = e },
-                { "r", "Will remove", r => bRemovePatch = r != null },
+                { "x|modsfolder=", "The game's expected mods directory", x => m_modsfolder = x },
+                { "r", "Will remove the harmony patcher", r => bRemovePatch = r != null },
             };
 
 
@@ -64,7 +68,7 @@ namespace VortexHarmonyExec
             {
                 extra = options.Parse(args);
             }
-            catch (OptionException e)
+            catch (OptionException)
             {
                 bShowHelp = true;
             }
