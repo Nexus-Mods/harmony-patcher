@@ -1,14 +1,13 @@
-﻿using Mono.Cecil;
+﻿using Microsoft.Practices.Unity;
+
+using Mono.Cecil;
 using Mono.Cecil.Cil;
-using Mono.Cecil.Rocks;
 
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 
@@ -307,8 +306,8 @@ namespace VortexHarmonyInstaller.ModTypes
         protected IParsedModData m_ModData = null;
         internal IParsedModData ModData { get { return m_ModData; } }
 
-        protected static Unity.UnityContainer m_ModDataContainer = new Unity.UnityContainer();
-        internal static Unity.UnityContainer ModDataContainer { get { return m_ModDataContainer; } }
+        protected static UnityContainer m_ModDataContainer = new UnityContainer();
+        internal static UnityContainer ModDataContainer { get { return m_ModDataContainer; } }
 
         protected static List<IExposedMod> m_ExposedMods = new List<IExposedMod>();
         public static List<IExposedMod> ExposedMods { get { return m_ExposedMods; } }

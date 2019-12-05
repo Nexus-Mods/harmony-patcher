@@ -16,16 +16,6 @@ namespace VortexHarmonyExec
         public const string VORTEX_GUI_LIB = "VortexUnity.dll";
     }
 
-    internal partial class Util
-    {
-        public static bool IsFullPath(string path)
-        {
-            return !String.IsNullOrWhiteSpace(path)
-                && path.IndexOfAny(Path.GetInvalidPathChars().ToArray()) == -1
-                && Path.IsPathRooted(path)
-                && !Path.GetPathRoot(path).Equals(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal);
-        }
-    }
     class VortexHarmonyManager
     {
         private static Injector m_injector;
@@ -49,7 +39,7 @@ namespace VortexHarmonyExec
             // Try to load by filename - split out the filename of the full assembly name
             // and append the base path of the original assembly (i.e. look in the same dir)
             string filename = args.Name.Split(',')[0] + ".dll".ToLower();
-            string asmFile = Path.Combine(@".\", "lib", filename);
+            string asmFile = Path.Combine(".\\lib", filename);
 
             return System.Reflection.Assembly.LoadFrom(asmFile);
         }

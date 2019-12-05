@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 
@@ -64,7 +60,7 @@ namespace VortexHarmonyInstaller.ModTypes
                 else
                     return false;
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 return false;
             }

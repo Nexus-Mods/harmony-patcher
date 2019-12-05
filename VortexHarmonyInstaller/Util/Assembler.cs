@@ -1,42 +1,56 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace VortexHarmonyInstaller.Util
 {
     public partial class Constants
     {
+        public const string FRAMEWORK_PATH = @"c:\Windows\Microsoft.NET\Framework\";
         public const string ILASM_EXEC = "ilasm.exe";
+        public const string ILASM_ARG = "\"{0}\" /dll /output:\"{1}\"";
+    }
+
+    internal partial class Exceptions
+    {
+        internal class MissingNETAssemblerException : Exception
+        {
+            internal MissingNETAssemblerException(string version)
+                : base($"Unable to find assembler version: {version}") { }
+        }
     }
 
     public class Assembler
     {
-        private const string m_strIlasmArguments = "\"{0}\" /dll /output:\"{1}\"";
-
-        public static string ILAsmFileLocation
+        private static string[] m_Assemblers = null;
+        private static string[] GetAssemblers()
         {
-            get
-            {
-                return Path.Combine(@"c:\Windows\Microsoft.NET\Framework\v4.0.30319\", Constants.ILASM_EXEC);
-            }
+            if ((null == m_Assemblers) || (m_Assemblers.Length == 0))
+                m_Assemblers = Directory.GetFiles(Constants.FRAMEWORK_PATH,
+                                                  Constants.ILASM_EXEC,
+                                                  SearchOption.AllDirectories);
+
+            return m_Assemblers;
         }
 
-        static Assembler()
+        public static void AssembleFile(string ILFilePath, string outputFilePath, Version version)
         {
-            //extract the ildasm file to the executing assembly location
-            //ExtractFileToLocation(Constants.ILASM_EXEC, ILAsmFileLocation);
-        }
+            if (!File.Exists(ILFilePath))
+                throw new InvalidOperationException(string.Format("The file {0} does not exist!", ILFilePath));
 
-        public static void AssembleFile(string strILFilePath, string strOutputFilePath)
-        {
-            if (!File.Exists(strILFilePath))
-            {
-                throw new InvalidOperationException(string.Format("The file {0} does not exist!", strILFilePath));
-            }
+            m_Assemblers = Directory.GetFiles(Constants.FRAMEWORK_PATH, Constants.ILASM_EXEC, SearchOption.AllDirectories);
+            Regex rgx = new Regex($"v{version.Major}[0-9]*");
+            string assemblerFileLocation = GetAssemblers()
+                .Where(assembler => rgx.IsMatch(assembler))
+                .SingleOrDefault();
 
-            var startInfo = new ProcessStartInfo(ILAsmFileLocation, string.Format(m_strIlasmArguments, strILFilePath, strOutputFilePath));
+            if (assemblerFileLocation == null)
+                throw new Exceptions.MissingNETAssemblerException(version.ToString());
+
+            var startInfo = new ProcessStartInfo(assemblerFileLocation, string.Format(Constants.ILASM_ARG, ILFilePath, outputFilePath));
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
             startInfo.CreateNoWindow = true;
             startInfo.UseShellExecute = false;
@@ -51,7 +65,7 @@ namespace VortexHarmonyInstaller.Util
                 {
                     throw new InvalidOperationException(
                         string.Format("Generating dll assembly from file {0} failed with exit code - {1}. Log: {2}",
-                        strILFilePath, process.ExitCode, output));
+                        ILFilePath, process.ExitCode, output));
                 }
             }
         }

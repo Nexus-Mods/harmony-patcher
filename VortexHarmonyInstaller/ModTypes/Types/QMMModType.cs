@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Practices.Unity;
 
-using Unity;
+using System;
+using System.IO;
 
 namespace VortexHarmonyInstaller.ModTypes
 {
@@ -24,7 +20,7 @@ namespace VortexHarmonyInstaller.ModTypes
         public string GetModName()
         {
             if (Data == null)
-                throw new InvalidDataException("Invalid QMM Data");
+                throw new NullReferenceException("Invalid QMM Data");
 
             return Data.Base_Id;
         }
@@ -48,7 +44,7 @@ namespace VortexHarmonyInstaller.ModTypes
             {
                 AssignManifestPath(strManifestPath);
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 return false;
             }

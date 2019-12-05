@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.UI;
 
 using VortexHarmonyInstaller.Delegates;
 
@@ -157,7 +158,8 @@ namespace VortexUnity
         private Resolution m_CurrentResolution;
 
         private static int m_iGlobalFontSize = 22;
-        public static int GlobalFontSize {
+        public static int GlobalFontSize
+        {
             get { return m_iGlobalFontSize; }
             set { m_iGlobalFontSize = value; }
         }
@@ -170,7 +172,8 @@ namespace VortexUnity
             string strFolder = VortexPatcher.CurrentDataPath;
             string strAssemlyPath = Path.Combine(strFolder, Constants.ASSEMBLY_NAME);
             m_UIAssembly = Assembly.LoadFile(strAssemlyPath);
-            m_UIAssetBundle = AssetBundle.LoadFromFile(Path.Combine(strFolder, m_strAssetPath, Constants.UI_BUNDLE_NAME));
+            string strBundleRelPath = Path.Combine(m_strAssetPath, Constants.UI_BUNDLE_NAME);
+            m_UIAssetBundle = AssetBundle.LoadFromFile(Path.Combine(strFolder, strBundleRelPath));
             if (null != m_UIAssetBundle)
                 m_liTextures = m_UIAssetBundle.LoadAllAssets<Texture2D>().ToList();
             else

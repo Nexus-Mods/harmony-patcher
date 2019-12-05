@@ -5,8 +5,8 @@ namespace VortexHarmonyInstaller.Util
 {
     public static class Singleton<T> where T: class
     {
-        static volatile T _instance;
-        static object _lock = new object();
+        static volatile T m_instance;
+        static object m_lock = new object();
 
         static Singleton()
         {
@@ -16,9 +16,9 @@ namespace VortexHarmonyInstaller.Util
         {
             get
             {
-                if (_instance == null)
+                if (m_instance == null)
                 {
-                    lock (_lock)
+                    lock (m_lock)
                     {
                         ConstructorInfo constructor = null;
                         try
@@ -38,11 +38,11 @@ namespace VortexHarmonyInstaller.Util
                                     string.Format("Constructor is missing for '{0}'", typeof(T).Name)) });
                         }
 
-                        _instance = (T)constructor.Invoke(null);
+                        m_instance = (T)constructor.Invoke(null);
                     }
                 }
 
-                return _instance;
+                return m_instance;
             }
         }
     }

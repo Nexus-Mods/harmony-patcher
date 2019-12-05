@@ -14,20 +14,17 @@ namespace VortexHarmonyInstaller.Util
 
     public class Disassembler
     {
-        private static readonly Lazy<Assembly> CurrentAssembly = new Lazy<Assembly>(() =>
-        {
+        private static Assembly CurrentAssembly() {
             return MethodBase.GetCurrentMethod().DeclaringType.Assembly;
-        });
+        }
 
-        private static readonly Lazy<string> ExecutingAssemblyPath = new Lazy<string>(() =>
-        {
+        private static string ExecutingAssemblyPath() {
             return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        });
+        }
 
-        private static readonly Lazy<string[]> Resources = new Lazy<string[]>(() =>
-        {
-            return CurrentAssembly.Value.GetManifestResourceNames();
-        });
+        private static string[] Resources() {
+            return CurrentAssembly().GetManifestResourceNames();
+        }
 
         private const string m_strIldasmArguments = "/all /text \"{0}\"";
 
@@ -35,7 +32,7 @@ namespace VortexHarmonyInstaller.Util
         {
             get
             {
-                return Path.Combine(ExecutingAssemblyPath.Value, Constants.ILDASM_EXEC);
+                return Path.Combine(ExecutingAssemblyPath(), Constants.ILDASM_EXEC);
             }
         }
 
@@ -60,7 +57,7 @@ namespace VortexHarmonyInstaller.Util
             FileInfo fileInfoOutputFile = new FileInfo(fileName);
 
             using (FileStream streamToOutputFile = fileInfoOutputFile.OpenWrite())
-            using (Stream streamToResourceFile = CurrentAssembly.Value.GetManifestResourceStream(embeddedResourceName))
+            using (Stream streamToResourceFile = CurrentAssembly().GetManifestResourceStream(embeddedResourceName))
             {
                 const int size = 4096;
                 byte[] bytes = new byte[4096];
@@ -86,10 +83,10 @@ namespace VortexHarmonyInstaller.Util
                 ? Path.Combine(outFileName, fileNameInDll)
                 : outFileName;
 
-            string resourcePath = Resources.Value.Where(resource => resource.EndsWith(fileNameInDll, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            string resourcePath = Resources().Where(resource => resource.EndsWith(fileNameInDll, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
             if (resourcePath == null)
             {
-                throw new Exception(string.Format("Cannot find {0} in the embedded resources of {1}", fileNameInDll, CurrentAssembly.Value.FullName));
+                throw new Exception(string.Format("Cannot find {0} in the embedded resources of {1}", fileNameInDll, CurrentAssembly().FullName));
             }
             SaveFileFromEmbeddedResource(resourcePath, strOutFilePath);
         }

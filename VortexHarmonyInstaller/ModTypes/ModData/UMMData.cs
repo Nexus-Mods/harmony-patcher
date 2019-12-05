@@ -1,150 +1,217 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 
 using VortexHarmonyInstaller.Delegates;
 
-namespace VortexHarmonyInstaller.ModTypes
+namespace UnityModManagerNet
 {
-    // UMM passes a ModEntry object to its mods;
-    //  we're going to hijack the object, keeping only
-    //  properties and functionality that are relevant to us.
-    public class ModEntry: IExposedMod
+    public class UnityModManager
     {
-        // Reference to the mod's data
-        private UMMData m_ModData = null;
-        public UMMData Info {
-            get { return m_ModData; }
-            private set { m_ModData = value; }
-        }
-
-        // Full path to the mod's folder.
-        private string m_strModPath;
-        public string Path {
-            get { return m_strModPath; }
-            private set { m_strModPath = value; }
-        }
-
-        public ModEntry(UMMData data, string strModPath)
+        public class ModInfo : IEquatable<ModInfo>
         {
-            m_ModData = data;
-            m_strModPath = strModPath;
-        }
+            public string Id;
+            public string DisplayName;
+            public string Author;
+            public string Version;
+            public string ManagerVersion;
+            public string GameVersion;
+            public string[] Requirements;
+            public string AssemblyName;
+            public string EntryMethod;
+            public string HomePage;
+            public string Repository;
 
-        public static ModEntry GetModEntry(UMMData data, string strModPath)
-        {
-            return new ModEntry(data, strModPath);
-        }
+            [NonSerialized]
+            public bool IsCheat = true;
 
-        public void InvokeOnGUI()
-        {
-            OnGUI?.Invoke(this);
-            OnFixedGUI?.Invoke(this);
-        }
-
-        public void InvokeToggleGUI(bool bToggled)
-        {
-            if ((bool)(OnToggle?.Invoke(this, bToggled)))
-                OnShowGUI?.Invoke(this);
-            else
-                OnHideGUI?.Invoke(this);
-        }
-
-        public void InvokeOnStart()
-        {
-            m_ModData.Hooks.Start?.Invoke();
-        }
-
-        public void InvokeOnUpdate(float fDelta)
-        {
-            OnUpdate?.Invoke(this, fDelta);
-        }
-
-        public void InvokeOnLateUpdate(float fDelta)
-        {
-            OnLateUpdate?.Invoke(this, fDelta);
-        }
-
-        public void InvokeOnFixedUpdate(float fDelta)
-        {
-            OnFixedUpdate?.Invoke(this, fDelta);
-        }
-
-        public void InvokeCustom(string strName)
-        {
-            throw new NotImplementedException();
-        }
-
-        public string GetModName()
-        {
-            return Info.Id;
-        }
-
-        public Func<ModEntry, bool> OnUnload = null;
-        public Func<ModEntry, bool, bool> OnToggle = null;
-        public Action<ModEntry> OnGUI = null;
-        public Action<ModEntry> OnFixedGUI = null;
-        public Action<ModEntry> OnShowGUI = null;
-        public Action<ModEntry> OnHideGUI = null;
-        public Action<ModEntry> OnSaveGUI = null;
-        public Action<ModEntry, float> OnUpdate = null;
-        public Action<ModEntry, float> OnLateUpdate = null;
-        public Action<ModEntry, float> OnFixedUpdate = null;
-
-        public static class Logger
-        {
-            public static void NativeLog(string str)
+            public static implicit operator bool(ModInfo exists)
             {
-                LoggerDelegates.LogInfo(str);
+                return exists != null;
             }
 
-            public static void NativeLog(string str, string prefix)
+            public bool Equals(ModInfo other)
             {
-                LoggerDelegates.LogInfo(prefix + str);
+                return Id.Equals(other.Id);
             }
 
-            public static void Log(string str)
+            public override bool Equals(object obj)
             {
-                LoggerDelegates.LogInfo(str);
+                if (ReferenceEquals(null, obj))
+                {
+                    return false;
+                }
+                return obj is ModInfo modInfo && Equals(modInfo);
             }
 
-            public static void Log(string str, string prefix)
+            public override int GetHashCode()
             {
-                LoggerDelegates.LogInfo(prefix + str);
+                return Id.GetHashCode();
             }
 
-            public static void Error(string str)
+            public ModInfo(VortexHarmonyInstaller.ModTypes.UMMData data)
             {
-                LoggerDelegates.LogError(str);
+                Id = data.Id;
+                DisplayName = data.DisplayName;
+                Author = data.Author;
+                Version = data.Version;
+                ManagerVersion = "1.0.0";
+                GameVersion = "1.0.0";
+                Requirements = data.Requirements;
+                AssemblyName = data.AssemblyName;
+                EntryMethod = data.EntryMethod;
+                HomePage = "www.nexusmods.com";
+                Repository = "www.nexusmods.com";
+            }
+        }
+
+        // UMM passes a ModEntry object to its mods;
+        //  we're going to hijack the object, keeping only
+        //  properties and functionality that are relevant to us.
+        public class ModEntry : VortexHarmonyInstaller.IExposedMod
+        {
+            public ModInfo Info;
+
+            // Reference to the mod's data
+            private VortexHarmonyInstaller.ModTypes.UMMData m_ModData = null;
+            public VortexHarmonyInstaller.ModTypes.UMMData ModData
+            {
+                get { return m_ModData; }
+                private set { m_ModData = value; }
             }
 
-            public static void Error(string str, string prefix)
+            // Full path to the mod's folder.
+            private string m_strModPath;
+            public string Path
             {
-                LoggerDelegates.LogError(prefix + str);
+                get { return m_strModPath; }
+                private set { m_strModPath = value; }
             }
 
-            public static void LogException(Exception e)
+            public ModEntry(VortexHarmonyInstaller.ModTypes.UMMData data, string strModPath)
             {
-                LoggerDelegates.LogError(e);
+                m_ModData = data;
+                m_strModPath = strModPath;
+                Info = new ModInfo(data);
             }
 
-            public static void LogException(string key, Exception e)
+            public static ModEntry GetModEntry(VortexHarmonyInstaller.ModTypes.UMMData data, string strModPath)
             {
-                LoggerDelegates.LogError(e);
+                if (data == null)
+                    throw new NullReferenceException("Must provide valid data");
+
+                return new ModEntry(data, strModPath);
             }
 
-            public static void LogException(string key, Exception e, string prefix)
+            public void InvokeOnGUI()
             {
-                LoggerDelegates.LogError(e);
+                OnGUI?.Invoke(this);
+                OnFixedGUI?.Invoke(this);
+            }
+
+            public void InvokeToggleGUI(bool bToggled)
+            {
+                if ((bool)(OnToggle?.Invoke(this, bToggled)))
+                    OnShowGUI?.Invoke(this);
+                else
+                    OnHideGUI?.Invoke(this);
+            }
+
+            public void InvokeOnStart()
+            {
+                m_ModData.Hooks.Start?.Invoke();
+            }
+
+            public void InvokeOnUpdate(float fDelta)
+            {
+                OnUpdate?.Invoke(this, fDelta);
+            }
+
+            public void InvokeOnLateUpdate(float fDelta)
+            {
+                OnLateUpdate?.Invoke(this, fDelta);
+            }
+
+            public void InvokeOnFixedUpdate(float fDelta)
+            {
+                OnFixedUpdate?.Invoke(this, fDelta);
+            }
+
+            public void InvokeCustom(string strName)
+            {
+                throw new NotImplementedException();
+            }
+
+            public string GetModName()
+            {
+                return Info.Id;
+            }
+
+            public Func<ModEntry, bool> OnUnload = null;
+            public Func<ModEntry, bool, bool> OnToggle = null;
+            public Action<ModEntry> OnGUI = null;
+            public Action<ModEntry> OnFixedGUI = null;
+            public Action<ModEntry> OnShowGUI = null;
+            public Action<ModEntry> OnHideGUI = null;
+            public Action<ModEntry> OnSaveGUI = null;
+            public Action<ModEntry, float> OnUpdate = null;
+            public Action<ModEntry, float> OnLateUpdate = null;
+            public Action<ModEntry, float> OnFixedUpdate = null;
+
+            public static class Logger
+            {
+                public static void NativeLog(string str)
+                {
+                    LoggerDelegates.LogInfo(str);
+                }
+
+                public static void NativeLog(string str, string prefix)
+                {
+                    LoggerDelegates.LogInfo(prefix + str);
+                }
+
+                public static void Log(string str)
+                {
+                    LoggerDelegates.LogInfo(str);
+                }
+
+                public static void Log(string str, string prefix)
+                {
+                    LoggerDelegates.LogInfo(prefix + str);
+                }
+
+                public static void Error(string str)
+                {
+                    LoggerDelegates.LogError(str);
+                }
+
+                public static void Error(string str, string prefix)
+                {
+                    LoggerDelegates.LogError(prefix + str);
+                }
+
+                public static void LogException(Exception e)
+                {
+                    LoggerDelegates.LogError(e);
+                }
+
+                public static void LogException(string key, Exception e)
+                {
+                    LoggerDelegates.LogError(e);
+                }
+
+                public static void LogException(string key, Exception e, string prefix)
+                {
+                    LoggerDelegates.LogError(e);
+                }
             }
         }
     }
+}
 
+namespace VortexHarmonyInstaller.ModTypes
+{
     public class UMMData : BaseParsedModData, IParsedModData
     {
         [JsonRequired]
@@ -193,8 +260,17 @@ namespace VortexHarmonyInstaller.ModTypes
 
         public bool ParseManifest(string strManifestPath)
         {
+            string dirPath = Path.GetDirectoryName(strManifestPath);
+            string fileName = Path.GetFileName(strManifestPath);
             try
             {
+                LoggerDelegates.LogInfo("7");
+                Console.WriteLine(strManifestPath);
+                if (!File.Exists(strManifestPath))
+                {
+                    fileName = fileName.ToLower();
+                    strManifestPath = Path.Combine(dirPath, fileName);
+                }
                 string json = File.ReadAllText(strManifestPath);
                 UMMData modData = JsonConvert.DeserializeObject<UMMData>(json);
                 if (modData.Base_Id != null)
@@ -206,7 +282,10 @@ namespace VortexHarmonyInstaller.ModTypes
                 else
                     return false;
             }
-            catch (Exception exc) { return false; }
+            catch (Exception exc) {
+                LoggerDelegates.LogError("8", exc);
+                return false;
+            }
         }
 
         public bool ParseSettings(string strSettingsPath)

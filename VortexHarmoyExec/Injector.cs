@@ -2,19 +2,10 @@
 using Mono.Cecil.Cil;
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-
-using Harmony;
-using VortexHarmonyInstaller;
 using VortexHarmoyExec;
 using System.Diagnostics;
-using System.ComponentModel;
-using System.Net.Http;
 using System.Net;
 
 namespace VortexHarmonyExec
@@ -253,7 +244,7 @@ namespace VortexHarmonyExec
 
                 assembly.Dispose();
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 bReflectionEnabled = false;
             }
@@ -266,7 +257,7 @@ namespace VortexHarmonyExec
     internal class MissingAssemblyResolver : BaseAssemblyResolver
     {
         private DefaultAssemblyResolver m_AssemblyResolver;
-        private string m_strAssemblyPath;
+        private readonly string m_strAssemblyPath;
 
         public MissingAssemblyResolver(string strAssemblyPath)
         {
@@ -282,7 +273,7 @@ namespace VortexHarmonyExec
             {
                 assembly = m_AssemblyResolver.Resolve(name);
             }
-            catch (AssemblyResolutionException ex)
+            catch (AssemblyResolutionException)
             {
                 string[] libraries = Directory.GetFiles(m_strAssemblyPath, "*.dll", SearchOption.AllDirectories);
                 string missingLib = libraries.Where(lib => lib.Contains(name.Name)).SingleOrDefault();
@@ -299,12 +290,12 @@ namespace VortexHarmonyExec
 
         private static string m_strBundledAssetsDest;
 
-        private bool m_bInjectGUI;
-        private string m_strExtensionPath;
-        private string m_strDataPath;
+        private readonly bool m_bInjectGUI;
+        private readonly string m_strExtensionPath;
+        private readonly string m_strDataPath;
+        private readonly string m_strModsDirectory;
         private string m_strEntryPoint;
         private string m_strGameAssemblyPath;
-        private string m_strModsDirectory;
         private MissingAssemblyResolver m_resolver = null;
 
         // Array of mono mscrolib replacements which will re-enable reflection
@@ -319,16 +310,17 @@ namespace VortexHarmonyExec
         // Array of files we need to deploy/remove to/from the game's datapath.
         private static string[] _LIB_FILES = new string[] {
             "0Harmony.dll",
-            "log4net.config",
-            "log4net.dll",
+            "Microsoft.Practices.ServiceLocation.dll",
+            "Microsoft.Practices.Unity.Configuration.dll",
+            "Microsoft.Practices.Unity.dll",
+            "Microsoft.Practices.Unity.Interception.Configuration.dll",
+            "Microsoft.Practices.Unity.Interception.dll",
             "Mono.Cecil.dll",
             "Mono.Cecil.Mdb.dll",
             "Mono.Cecil.Pdb.dll",
             "Mono.Cecil.Rocks.dll",
             "Newtonsoft.Json.dll",
             "ObjectDumper.dll",
-            "Unity.Abstractions.dll",
-            "Unity.Container.dll",
             "VortexHarmonyInstaller.dll",
         };
 
@@ -340,7 +332,9 @@ namespace VortexHarmonyExec
                     ? Path.GetDirectoryName(strDataPath)
                     : strDataPath;
 
-                m_strBundledAssetsDest = Path.Combine(m_strDataPath, "VortexBundles", "UI");
+                // .NET 3.5 System.IO.Path doesn't support more than two arguments....
+                string uiBundlePath = Path.Combine("VortexBundles", "UI");
+                m_strBundledAssetsDest = Path.Combine(m_strDataPath, uiBundlePath);
                 m_strExtensionPath = VortexHarmonyManager.ExtensionPath;
                 m_strEntryPoint = strEntryPoint;
 

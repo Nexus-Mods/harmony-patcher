@@ -1,12 +1,11 @@
-﻿using System;
+﻿using Microsoft.Practices.Unity;
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
-
-using Unity;
 
 namespace VortexHarmonyInstaller.ModTypes
 {
@@ -32,7 +31,7 @@ namespace VortexHarmonyInstaller.ModTypes
         public string GetModName()
         {
             if (Data == null)
-                throw new InvalidDataException("Invalid Vortex mod data");
+                throw new NullReferenceException("Invalid Vortex mod data");
 
             return Data.Base_Id;
         }
@@ -45,7 +44,7 @@ namespace VortexHarmonyInstaller.ModTypes
             {
                 AssignManifestPath(strManifestPath);
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 return false;
             }
@@ -63,11 +62,11 @@ namespace VortexHarmonyInstaller.ModTypes
 
                 VortexModData data = (m_ModData as VortexModData);
                 if (null == data)
-                    throw new InvalidDataException("Invalid Vortex mod data");
+                    throw new NullReferenceException("Invalid Vortex mod data");
 
                 string[] entryPoint = data.EntryPoint.Split(new string[] { "::" }, StringSplitOptions.None);
                 if (entryPoint.Length != 2)
-                    throw new InvalidDataException(string.Format("Invalid EntryPoint", entryPoint.Length));
+                    throw new NullReferenceException(string.Format("Invalid EntryPoint", entryPoint.Length));
 
                 Type type = m_ModAssembly.GetType(entryPoint[0]);
                 if (null == type)
