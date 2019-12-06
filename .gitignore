@@ -1,6 +1,7 @@
 .vs/
 *.suo
 *.pdb
+dist/UnityEngine.*
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/

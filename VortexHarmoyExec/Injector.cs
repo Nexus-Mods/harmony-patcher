@@ -222,6 +222,13 @@ namespace VortexHarmonyExec
             try
             {
                 AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(tempFile);
+                if (assembly.Name.Version.Major <= 3)
+                {
+                    // There doesn't seem to be a reason to replace the corlib
+                    //  for older .NET versions.
+                    assembly.Dispose();
+                    return true;
+                }
                 TypeDefinition type = assembly.MainModule.GetType(entryPoint[0]);
                 if (null == type)
                     throw new NullReferenceException("Failed to find entry Type in mod assembly");
