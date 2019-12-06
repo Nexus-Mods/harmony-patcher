@@ -316,6 +316,8 @@ namespace VortexHarmonyExec
             "Mono.Cecil.Pdb.dll",
             "Mono.Cecil.Rocks.dll",
             "Newtonsoft.Json.dll",
+            "System.Data.dll",
+            "System.Runtime.Serialization.dll",
             "ObjectDumper.dll",
             "VortexHarmonyInstaller.dll",
         };

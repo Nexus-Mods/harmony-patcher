@@ -264,7 +264,6 @@ namespace VortexHarmonyInstaller.ModTypes
             string fileName = Path.GetFileName(strManifestPath);
             try
             {
-                Console.WriteLine(strManifestPath);
                 if (!File.Exists(strManifestPath))
                 {
                     fileName = fileName.ToLower();
@@ -282,6 +281,10 @@ namespace VortexHarmonyInstaller.ModTypes
                     return false;
             }
             catch (Exception exc) {
+                bool isParserError = (exc is JsonException) ? true : false;
+                if (!isParserError)
+                    LoggerDelegates.LogError("Failed to parse mod data", exc);
+
                 return false;
             }
         }

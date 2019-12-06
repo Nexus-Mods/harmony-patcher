@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
+using System.Reflection;
+
 using Microsoft.Practices.Unity;
 
 using VortexHarmonyInstaller.ModTypes;
@@ -39,7 +41,7 @@ namespace VortexHarmonyInstaller
             {
                 assembly = m_AssemblyResolver.Resolve(name);
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 string[] libraries = Directory.GetFiles(m_strAssemblyPath, "*.dll", SearchOption.AllDirectories);
                 string missingLib = libraries.Where(lib => lib.Contains(name.Name)).SingleOrDefault();
@@ -91,6 +93,7 @@ namespace VortexHarmonyInstaller
             }
 
             m_strDataPath = Path.GetDirectoryName(strUnityEngine);
+            MissingAssemblyResolver resolver = new MissingAssemblyResolver(m_strDataPath);
 
             Logger.Info("===============");
             Logger.Info("Patcher started");
@@ -147,8 +150,7 @@ namespace VortexHarmonyInstaller
         public static IModType IdentifyModType(string dllRoot)
         {
             var interfaceType = typeof(IModType);
-            var types = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(s => s.GetTypes())
+            var types = Assembly.GetExecutingAssembly().GetTypes()
                 .Where(p => interfaceType.IsAssignableFrom(p)
                     && p.FullName != "VortexHarmonyInstaller.IModType");
 

@@ -1,5 +1,6 @@
 .vs/
 *.suo
+*.pdb
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/

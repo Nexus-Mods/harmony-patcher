@@ -183,7 +183,7 @@ namespace VortexHarmonyInstaller.Util
                 {
                     logEntry = m_logQueue.Dequeue();
                 }
-                catch (Exception exc)
+                catch (Exception)
                 {
                     if (string.IsNullOrEmpty(logEntry))
                         break;

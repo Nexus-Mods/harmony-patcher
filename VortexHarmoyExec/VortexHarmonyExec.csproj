@@ -40,22 +40,13 @@
     <PackageReference Include="Mono.Cecil">
       <Version>0.10.4</Version>
     </PackageReference>
-    <Reference Include="0Harmony, Version=1.2.0.1, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\dist\0Harmony.dll</HintPath>
-    </Reference>
     <Reference Include="Mono.Options">
       <HintPath>..\dist\Mono.Options.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\dist\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <ProjectReference Include="..\VortexHarmonyInstaller\VortexHarmonyInstaller.csproj">
       <Project>{B296D0A4-1114-4690-9520-463954B4DB8D}</Project>
