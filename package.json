@@ -4,8 +4,8 @@
   "description": "Code injection support for games written in C#",
   "main": "./src/index.js",
   "scripts": {
-    "buildDev": "node build.js Debug",
-    "build": "node build.js",
+    "buildDev": "node buildInstaller.js Debug && node buildPatcher.js Debug",
+    "build": "node buildInstaller.js && node buildPatcher.js",
     "postinstall": "npm run build"
   },
   "typings": "./src/index.d.ts",
