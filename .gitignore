@@ -1,7 +1,6 @@
 .vs/
 *.suo
 *.pdb
-dist/UnityEngine.*
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
@@ -11,3 +10,6 @@ bld/
 [Bb]in/
 [Oo]bj/
 node_modules
+packages
+dist/UnityEngine.*
+dist/VortexHarmoyExec.*
