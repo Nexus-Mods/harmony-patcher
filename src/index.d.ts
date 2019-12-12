@@ -1,4 +1,4 @@
 /// <reference types="node" />
 /// <reference types="jest" />
-import runPatcher from './patcher';
-export { runPatcher };
+import { runPatcher, initHarmonyUI } from './patcher';
+export { runPatcher, initHarmonyUI };
