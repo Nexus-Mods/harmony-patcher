@@ -605,7 +605,26 @@ namespace VortexHarmonyExec
                 .ToArray();
 
             foreach (string strFile in files)
-                File.Copy(strFile, Path.Combine(m_strDataPath, Path.GetFileName(strFile)), true);
+            {
+                string strDestination = Path.Combine(m_strDataPath, Path.GetFileName(strFile));
+                if (File.Exists(strDestination))
+                {
+                    FileVersionInfo ourFile = FileVersionInfo.GetVersionInfo(strFile);
+                    FileVersionInfo theirFile = FileVersionInfo.GetVersionInfo(strDestination);
+
+                    if (ourFile.FileMajorPart == theirFile.FileMajorPart)
+                        File.Copy(strFile, strDestination, true);
+                    else
+                    {
+                        string strResponse = JSONResponse.CreateSerializedResponse($"{strDestination} exists and will not be replaced", Enums.EErrorCode.UNHANDLED_FILE_VERSION);
+                        Console.Error.WriteLine(strResponse);
+                    }
+                }
+                else
+                {
+                    File.Copy(strFile, strDestination);
+                }
+            }
 
             if (m_bInjectGUI && (m_strExtensionPath != null))
             {
@@ -625,7 +644,7 @@ namespace VortexHarmonyExec
                 }
                 catch (Exception e)
                 {
-                    // This is fine, some extenions might not provide bundled UI assets.
+                    // This is fine, some extensions might not provide bundled UI assets.
                     //  all this means is that the in-game UI will not look that great.
                     string strMessage = "Extension path did not provide bundled UI assets";
                     string strResponse = JSONResponse.CreateSerializedResponse(strMessage, 0, e);

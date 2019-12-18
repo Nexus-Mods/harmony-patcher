@@ -17,6 +17,9 @@
   "dependencies": {
     "async": "^2.6.2",
     "copyfiles": "^1.0.0",
-    "msbuild": "^1.0.3"
+    "msbuild": "^1.0.3",
+    "node-gyp": "^5.0.7",
+    "turbowalk": "Nexus-Mods/node-turbowalk",
+    "vortex-api": "Nexus-Mods/vortex-api"
   }
 }

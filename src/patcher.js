@@ -4,6 +4,8 @@ const BS = require('react-bootstrap');
 const { connect } = require('react-redux');
 const path = require('path');
 const { app, remote } = require('electron');
+const Promise = require('bluebird');
+const msbuildLib = require('msbuild');
 const { actions, fs, DraggableList, FlexLayout, log, MainPage, selectors, util } = require('vortex-api');
 
 const uniApp = app || remote.app;
@@ -12,6 +14,23 @@ const LOG_FILE_PATH = path.join(uniApp.getPath('userData'), 'harmonypatcher.log'
 const PATCHER_EXEC = 'VortexHarmoyExec.exe';
 const MODULE_PATH = path.join(util.getVortexPath('modules_unpacked'), 'harmony-patcher', 'dist');
 const EXEC_PATH = path.join(MODULE_PATH, PATCHER_EXEC);
+
+const VIGO_ASSEMBLY = 'VortexUnity.dll';
+const VIGO_DIR = path.resolve(MODULE_PATH, '..', 'VortexUnity');
+const VIGO_PROJ = path.join(VIGO_DIR, 'VortexUnityManager.csproj');
+
+// A list of Unity Assemblies required to build
+//  VIGO - if we can't find any of these inside the
+//  game's dataPath, we assume that VIGO is not required.
+const UNITY_ASSEMBLIES = [
+  'UnityEngine.dll',
+  'UnityEngine.AssetBundleModule.dll',
+  'UnityEngine.CoreModule.dll',
+  'UnityEngine.IMGUIModule.dll',
+  'UnityEngine.TextRenderingModule.dll',
+  'UnityEngine.UI.dll',
+  'UnityEngine.UIModule.dll',
+];
 
 // INVALID_ENTRYPOINT = -1,
 // MISSING_FILE = -2,
@@ -47,9 +66,10 @@ const PATCHER_ERRORS = {
 //  -x -> Location where we're planning to store our mods.
 function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath) {
   let lastError;
-  //return Promise.resolve();
-  const wstream = fs.createWriteStream(LOG_FILE_PATH);
-  return new Promise((resolve, reject) => {
+  //return copyAssemblies(dataPath).then(() => debugMSBuild());
+  return buildVIGO(dataPath).then(() => cleanAssemblies())
+  .then(() => new Promise((resolve, reject) => {
+    const wstream = fs.createWriteStream(LOG_FILE_PATH);
     let patcher;
     modsPath = !!modsPath ? modsPath : path.join(dataPath, 'VortexMods');
     try {
@@ -89,7 +109,97 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath) {
         ? reject(createError(code, lastError))
         : resolve();
     });
+  }));
+}
+
+function cleanAssemblies() {
+  const logAndContinue = (err) => {
+    log('error', 'unable to remove assembly', err);
+    return Promise.resolve();
+  };
+  return Promise.each(UNITY_ASSEMBLIES, assembly => {
+    const expectedPath = path.join(MODULE_PATH, assembly);
+    return fs.removeAsync(expectedPath)
+      .then(() => Promise.resolve())
+      .catch(err => (err.code !== 'ENOENT')
+        ? logAndContinue(err)
+        : Promise.resolve());
+  })
+}
+
+function copyAssemblies(dataPath) {
+  return fs.readdirAsync(dataPath).then(entries => {
+    const filtered = entries
+      .filter(entry => UNITY_ASSEMBLIES.indexOf(entry) !== -1)
+      .map(entry => path.join(dataPath, entry));
+    return Promise.each(filtered, entry => fs.copyAsync(entry, path.join(MODULE_PATH, path.basename(entry))));
+  })
+}
+
+function buildVIGO(dataPath) {
+  return new Promise((resolve, reject) =>
+    fs.statAsync(path.join(dataPath, VIGO_ASSEMBLY))
+      .then(() => reject(new Error('File exists')))
+      .catch(err => err.code !== 'ENOENT'
+        ? reject(err)
+        : copyAssemblies(dataPath))
+  .then(() => restore(() => build(() => resolve()))))
+  .catch(err => err.message === 'File exists'
+    ? Promise.resolve()
+    : createError('-13', err));
+}
+
+// The msbuild module we use to build our projects does not
+//  provide enough information when a build fails; this function
+//  can be used through Vortex to debug any build failures.
+function debugMSBuild() {
+  const msbuildLocation = 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\MSBuild\\15.0\\bin\\msbuild.exe';
+  const params = [
+    'D:\\Projects\\dawn\\node_modules\\harmony-patcher\\VortexUnity\\VortexUnityManager.csproj',
+    '/p:configuration=Release;TargetFrameworkVersion=v3.5',
+  ]
+
+  const debug = spawn(msbuildLocation, params);
+  debug.stdout.on('data', data => {
+    const formatted = data.toString().split('\n');
+    formatted.forEach(line => {
+      console.log(line);
+    });
   });
+
+  debug.stderr.on('data', data => {
+    const formatted = data.toString().split('\n');
+    formatted.forEach(line => {
+      console.log(line);
+    });
+  });
+
+  debug.on('error', err => {
+    console.log(err);
+  });
+
+  debug.on('close', code => {
+    console.log(code);
+  });
+}
+
+function build(cb) {
+  var msbuild = new msbuildLib(cb);
+  msbuild.sourcePath = VIGO_PROJ;
+  msbuild.configuration = 'Release;TargetFrameworkVersion=v3.5';
+  msbuild.overrideParams.push('/verbosity:quiet');
+  msbuild.overrideParams.push('/clp:ErrorsOnly');
+  msbuild.build();
+}
+
+function restore(cb) {
+  var msbuild = new msbuildLib(cb);
+  msbuild.sourcePath = VIGO_DIR;
+  msbuild.configuration = 'Release;TargetFrameworkVersion=v3.5';
+  msbuild.overrideParams.push('/t:restore');
+  msbuild.overrideParams.push('/verbosity:quiet');
+  msbuild.overrideParams.push('/clp:ErrorsOnly');
+  msbuild.build();
 }
 
 // Aimed at creating the default UI settings for a gameId.
