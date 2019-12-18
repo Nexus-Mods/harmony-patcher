@@ -2,96 +2,99 @@
 using System.IO;
 using System.Xml.Serialization;
 
+using VortexHarmonyInstaller;
 using VortexHarmonyInstaller.Delegates;
+using VortexHarmonyInstaller.ModTypes;
 
-using static UnityModManagerNet.UnityModManager;
-
-namespace VortexHarmonyInstaller.ModTypes
+namespace UnityModManagerNet
 {
     internal partial class Constants
     {
         internal const string UMM_SETTINGS_FILE_NAME = "Settings.xml";
     }
 
-    // UMM's settings object.
-    public class ModSettings: ISettings
+    public partial class UnityModManager
     {
-        public virtual string GetSettingsPath(IExposedMod mod)
+        // UMM's settings object.
+        public class ModSettings : ISettings
         {
-            ModEntry modEntry = mod as ModEntry;
-            return Path.Combine(modEntry.Path, Constants.UMM_SETTINGS_FILE_NAME);
-        }
-
-        public virtual void Save(IExposedMod mod)
-        {
-            ModEntry modEntry = mod as ModEntry;
-            Save(this, modEntry);
-        }
-
-        public static void Save<T>(T data, ModEntry mod) where T : ModSettings, new()
-        {
-            var filepath = data.GetSettingsPath(mod);
-            try
+            public virtual string GetSettingsPath(IExposedMod mod)
             {
-                using (var writer = new StreamWriter(filepath))
-                {
-                    var serializer = new XmlSerializer(typeof(T));
-                    serializer.Serialize(writer, data);
-                }
+                ModEntry modEntry = mod as ModEntry;
+                return Path.Combine(modEntry.Path, Constants.UMM_SETTINGS_FILE_NAME);
             }
-            catch (Exception e)
-            {
-                LoggerDelegates.LogError($"Can't save {filepath}.", e);
-            }
-        }
 
-        public virtual T Load<T, U>(IExposedMod mod) where T : U, new()
-        {
-            ModEntry modEntry = mod as ModEntry;
-            var t = new T();
-            var filepath = GetSettingsPath(modEntry);
-            if (File.Exists(filepath))
+            public virtual void Save(IExposedMod mod)
             {
+                ModEntry modEntry = mod as ModEntry;
+                Save(this, modEntry);
+            }
+
+            public static void Save<T>(T data, ModEntry mod) where T : ModSettings, new()
+            {
+                var filepath = data.GetSettingsPath(mod);
                 try
                 {
-                    using (var stream = File.OpenRead(filepath))
+                    using (var writer = new StreamWriter(filepath))
                     {
                         var serializer = new XmlSerializer(typeof(T));
-                        var result = (T)serializer.Deserialize(stream);
-                        return result;
+                        serializer.Serialize(writer, data);
                     }
                 }
                 catch (Exception e)
                 {
-                    LoggerDelegates.LogError($"Can't read {filepath}.", e);
+                    LoggerDelegates.LogError($"Can't save {filepath}.", e);
                 }
             }
 
-            return t;
-        }
-
-        public static T Load<T>(ModEntry modEntry) where T : ModSettings, new()
-        {
-            var t = new T();
-            var filepath = t.GetSettingsPath(modEntry);
-            if (File.Exists(filepath))
+            public virtual T Load<T, U>(IExposedMod mod) where T : U, new()
             {
-                try
+                ModEntry modEntry = mod as ModEntry;
+                var t = new T();
+                var filepath = GetSettingsPath(modEntry);
+                if (File.Exists(filepath))
                 {
-                    using (var stream = File.OpenRead(filepath))
+                    try
                     {
-                        var serializer = new XmlSerializer(typeof(T));
-                        var result = (T)serializer.Deserialize(stream);
-                        return result;
+                        using (var stream = File.OpenRead(filepath))
+                        {
+                            var serializer = new XmlSerializer(typeof(T));
+                            var result = (T)serializer.Deserialize(stream);
+                            return result;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        LoggerDelegates.LogError($"Can't read {filepath}.", e);
                     }
                 }
-                catch (Exception e)
-                {
-                    LoggerDelegates.LogError($"Can't read {filepath}.", e);
-                }
+
+                return t;
             }
 
-            return t;
+            public static T Load<T>(ModEntry modEntry) where T : ModSettings, new()
+            {
+                var t = new T();
+                var filepath = t.GetSettingsPath(modEntry);
+                if (File.Exists(filepath))
+                {
+                    try
+                    {
+                        using (var stream = File.OpenRead(filepath))
+                        {
+                            var serializer = new XmlSerializer(typeof(T));
+                            var result = (T)serializer.Deserialize(stream);
+                            return result;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        LoggerDelegates.LogError($"Can't read {filepath}.", e);
+                    }
+                }
+
+                return t;
+            }
         }
     }
 }

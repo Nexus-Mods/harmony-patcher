@@ -189,7 +189,7 @@ namespace VortexHarmonyInstaller.ModTypes
             catch (Exceptions.AssemblyIsInjectedException exc)
             {
                 // We already dealt with this mod, no need to hijack its calls again.
-                VortexPatcher.Logger.Debug(exc);
+                VortexPatcher.Logger.Debug(exc.Message);
                 return true;
             }
             catch (Exception exc)
@@ -249,6 +249,10 @@ namespace VortexHarmonyInstaller.ModTypes
                 methodInfo.Invoke(null, param);
 
                 AddExposedMod(modEntry);
+            } catch (ReflectionTypeLoadException ex) {
+                foreach(Exception inner in ex.LoaderExceptions) {
+                    VortexPatcher.Logger.Error($"Loader exception: {inner.Message}", inner);
+                }
             }
             catch (Exception exc)
             {

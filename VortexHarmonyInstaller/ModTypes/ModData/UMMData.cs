@@ -7,7 +7,7 @@ using VortexHarmonyInstaller.Delegates;
 
 namespace UnityModManagerNet
 {
-    public class UnityModManager
+    public partial class UnityModManager
     {
         public class ModInfo : IEquatable<ModInfo>
         {
