@@ -15,6 +15,8 @@ const PATCHER_EXEC = 'VortexHarmoyExec.exe';
 const MODULE_PATH = path.join(util.getVortexPath('modules_unpacked'), 'harmony-patcher', 'dist');
 const EXEC_PATH = path.join(MODULE_PATH, PATCHER_EXEC);
 
+const LOAD_ORDER_FILE = 'load_order.txt';
+
 const VIGO_ASSEMBLY = 'VortexUnity.dll';
 const VIGO_DIR = path.resolve(MODULE_PATH, '..', 'VortexUnity');
 const VIGO_PROJ = path.join(VIGO_DIR, 'VortexUnityManager.csproj');
@@ -255,6 +257,8 @@ function initHarmonyUI(context, extensionPath, dataPath, entryPoint, modsPath, g
     visible: () => selectors.activeGameId(context.api.store.getState()) === gameId,
     props: () => ({
       t: context.api.translate,
+      extensionPath,
+      moddingPath: path.join(getDiscoveryPath(context.api.store.getState(), gameId), modsPath),
     }),
   });
 }
@@ -348,7 +352,7 @@ function LoadOrderBase(props) {
           React.createElement('img', {
             src: props.mods[item].attributes.pictureUrl
                   ? props.mods[item].attributes.pictureUrl
-                  : `${__dirname}/gameart.jpg`,
+                  : `${props.extensionPath}/gameart.jpg`,
             className: 'mod-picture',
             width:'75px',
             height:'45px',
@@ -398,15 +402,61 @@ function LoadOrderBase(props) {
                       + 'Mods placed at the bottom of the load order will have priority over those above them.', { ns: props.I18N })),
                   React.createElement('p', {},
                   props.t('Note: You can only manage mods installed with Vortex. Installing other mods manually may cause unexpected errors.', { ns: props.I18N })),
+                  React.createElement('button', {
+                    id: 'save',
+                    className: 'btn btn-default',
+                    onClick: () => saveLoadOrder(props),
+                  }, 
+                  props.t('Save changes', { ns: props.I18N }))
               ))
         )))));
+}
+
+function findAssemblyFile(modFolder) {
+  let foundAssembly = false;
+  return fs.readdirAsync(modFolder).then(entries => {
+    const filtered = entries.filter(entry => path.extname(entry) === '');
+    return new Promise((resolve) => {
+      return Promise.each(filtered, entry => foundAssembly ? Promise.resolve() : fs.readdirAsync(path.join(modFolder, entry))
+        .then(files => {
+          const assembly = files.find(file => file.endsWith('.dll'));
+          foundAssembly = assembly !== undefined;
+          return foundAssembly ? resolve(assembly) : Promise.resolve();
+      }))
+      // Couldn't find anything.
+      .then(() => resolve(undefined));
+    });
+  });
+}
+
+function saveLoadOrder(props) {
+  const destination = path.join(props.moddingPath, LOAD_ORDER_FILE);
+  let assembliesInOrder = [];
+  return Promise.each(props.order, entry => {
+    const modFolder = path.join(props.stagingFolder, props.mods[entry].installationPath);
+    // We expect an additional folder inside the installation path which contains all mod files.
+    return findAssemblyFile(modFolder)
+      .then(assemblyName => {
+        if (!!assemblyName) {
+          assembliesInOrder.push(assemblyName);
+          return Promise.resolve();
+        } else {
+          log('error', 'Unable to find mod assembly', entry);
+          return Promise.resolve();
+        }
+      });
+    })
+    .then(() => fs.writeFileAsync(destination, assembliesInOrder.join('\n'),{ encoding: 'utf-8' }))
+    .catch(err => props.onShowError('Failed to save load order', err, false));
 }
 
 function mapStateToProps(state) {
   const profile = selectors.activeProfile(state) || {};
   const profileId = !!profile ? profile.id : '';
   const gameId = !!profile ? profile.gameId : '';
+  const stagingFolder = !!gameId ? selectors.installPathForGame(state, gameId) : '';
   return {
+    stagingFolder,
     profile,
     modState: util.getSafe(profile, ['modState'], {}),
     mods: util.getSafe(state, ['persistent', 'mods', gameId], []),
@@ -419,6 +469,7 @@ function mapDispatchToProps(dispatch) {
   return {
     onSetDeploymentNecessary: (gameId, necessary) => dispatch(actions.setDeploymentNecessary(gameId, necessary)),
     onSetOrder: (profileId, ordered) => dispatch(actions.setLoadOrder(profileId, ordered)),
+    onShowError: (message, details, allowReport) => util.showError(dispatch, message, details, { allowReport }),
   };
 }
 
