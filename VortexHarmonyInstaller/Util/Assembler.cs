@@ -16,6 +16,12 @@ namespace VortexHarmonyInstaller.Util
 
     internal partial class Exceptions
     {
+        internal class AssemblerFailedException: Exception
+        {
+            internal AssemblerFailedException(string ILFilePath, string errorCode, string output)
+                : base($"Generating dll assembly from file {ILFilePath} failed with exit code - {errorCode}. " +
+                      $"Log: {output}") { }
+        }
         internal class MissingNETAssemblerException : Exception
         {
             internal MissingNETAssemblerException(string version)
@@ -41,7 +47,6 @@ namespace VortexHarmonyInstaller.Util
             if (!File.Exists(ILFilePath))
                 throw new InvalidOperationException(string.Format("The file {0} does not exist!", ILFilePath));
 
-            m_Assemblers = Directory.GetFiles(Constants.FRAMEWORK_PATH, Constants.ILASM_EXEC, SearchOption.AllDirectories);
             Regex rgx = new Regex($"v{version.Major}[0-9]*");
             string assemblerFileLocation = GetAssemblers()
                 .Where(assembler => rgx.IsMatch(assembler))
@@ -55,17 +60,18 @@ namespace VortexHarmonyInstaller.Util
             startInfo.CreateNoWindow = true;
             startInfo.UseShellExecute = false;
             startInfo.RedirectStandardOutput = true;
+            startInfo.RedirectStandardError = true;
 
-            using (var process = System.Diagnostics.Process.Start(startInfo))
+            using (var process = Process.Start(startInfo))
             {
                 string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
                 process.WaitForExit();
 
                 if (process.ExitCode != 0)
                 {
-                    throw new InvalidOperationException(
-                        string.Format("Generating dll assembly from file {0} failed with exit code - {1}. Log: {2}",
-                        ILFilePath, process.ExitCode, output));
+                    string status = output + "\n" + error;
+                    throw new Exceptions.AssemblerFailedException(ILFilePath, process.ExitCode.ToString(), status);
                 }
             }
         }

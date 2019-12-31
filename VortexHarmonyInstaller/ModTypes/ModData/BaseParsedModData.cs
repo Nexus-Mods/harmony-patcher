@@ -40,6 +40,22 @@ namespace VortexHarmonyInstaller.ModTypes
 
     internal partial class Util
     {
+        static public void TryDelete(string strFilePath)
+        {
+            if (!File.Exists(strFilePath))
+                return; // No file, no problems.
+
+            try
+            {
+                File.Delete(strFilePath);
+            }
+            catch (Exception e)
+            {
+                LoggerDelegates.LogError("Unable to delete file", e);
+                return;
+            }
+        }
+
         static public string Backup(string strFilePath)
         {
             if (!File.Exists(strFilePath))
@@ -314,6 +330,11 @@ namespace VortexHarmonyInstaller.ModTypes
 
         public BaseModType()
         {
+        }
+
+        public IParsedModData GetModData()
+        {
+            return ModData;
         }
 
         protected void AddExposedMod(IExposedMod mod)

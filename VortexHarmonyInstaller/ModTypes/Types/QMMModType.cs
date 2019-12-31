@@ -52,6 +52,11 @@ namespace VortexHarmonyInstaller.ModTypes
             ParseData(ModDataContainer.Resolve<QMMData>());
             return m_ModData != null;
         }
+
+        public string[] GetDependencies()
+        {
+            throw new NotImplementedException();
+        }
     }
 
 }

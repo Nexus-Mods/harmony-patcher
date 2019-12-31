@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Mono.Cecil;
+
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -95,7 +97,7 @@ namespace VortexHarmonyInstaller.Util
         {
             if (!File.Exists(assemblyFilePath))
             {
-                throw new InvalidOperationException(string.Format("The file {0} does not exist!", assemblyFilePath));
+                throw new FileNotFoundException(assemblyFilePath);
             }
 
             string tempFileName = Path.GetTempFileName();
@@ -123,21 +125,40 @@ namespace VortexHarmonyInstaller.Util
             return tempFileName;
         }
 
-        public static string DisassembleFile(string strAssemblyFilePath)
+        public static string DisassembleFile(string assemblyFilePath, bool extractResources = false)
         {
-
-            string disassembledFile = GetDisassembledFile(strAssemblyFilePath);
-            try
+            if (extractResources)
             {
-                return File.ReadAllText(disassembledFile);
-            }
-            finally
-            {
-                if (File.Exists(disassembledFile))
+                // Will extract any embedded resource files we can find.
+                //  We don't care for decryption or any sort of file manipulation,
+                //  simply dumping the files next to the assembly will do.
+                AssemblyDefinition assDef = AssemblyDefinition.ReadAssembly(assemblyFilePath);
+                if (assDef.MainModule.HasResources)
                 {
-                    File.Delete(disassembledFile);
+                    EmbeddedResource[] resources = assDef.MainModule.Resources
+                        .Where(res => res.ResourceType == ResourceType.Embedded)
+                        .Select(res => res as EmbeddedResource)
+                        .ToArray();
+
+                    foreach (EmbeddedResource res in resources)
+                    {
+                        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(assemblyFilePath),
+                            res.Name), res.GetResourceData());
+                    }
                 }
+
+                // Let it go! let it go!
+                assDef.Dispose();
             }
+
+            string disassembledFile = GetDisassembledFile(assemblyFilePath);
+            string disassembledIL = File.ReadAllText(disassembledFile);
+            if (File.Exists(disassembledFile))
+            {
+                File.Delete(disassembledFile);
+            }
+
+            return disassembledIL;
         }
     }
 }

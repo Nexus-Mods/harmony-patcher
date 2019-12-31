@@ -78,6 +78,16 @@ namespace VortexHarmonyInstaller
             ModsInjectionComplete?.Invoke(exposedMods);
         }
 
+        public static IModType FindMod<T>(string id)
+        {
+            IModType[] mods = m_liMods.Where(mod => mod.GetType() == typeof(T)).ToArray();
+            IModType modEntry = mods.FirstOrDefault(mod => mod.GetModName() == id);
+            if (modEntry == null)
+                Logger.Info($"Unable to find mod entry: {id}");
+
+            return modEntry;
+        }
+
         public static void Patch(string modsPath)
         {
             m_modsPath = modsPath;
@@ -103,6 +113,11 @@ namespace VortexHarmonyInstaller
             // All dll files within the provided mods folder are considered mod entries.
             FileInfo[] modLibFiles = new DirectoryInfo(m_modsPath).GetFiles("*.dll", SearchOption.AllDirectories);
             ResolveModList(modLibFiles);
+
+            Logger.Info("Sorting mod load order");
+            // We should now have the mod list populated and ready, we can now
+            //  sort the mods according to what the user selected.
+            //m_liMods.Sort(IComparer)
 
             Logger.Info("Starting to inject mods");
             foreach (var mod in m_liMods)

@@ -16,17 +16,9 @@ namespace VortexHarmonyInstaller.ModTypes
 
     class VortexModType : BaseModType, IModType
     {
-        private VortexModData Data 
-        { 
-            get 
-            {
-                return m_ModData as VortexModData;
-            } 
-        }
+        private VortexModData Data { get { return m_ModData as VortexModData; } }
 
-        public VortexModType()
-        {
-        }
+        public VortexModType() {}
 
         public string GetModName()
         {
@@ -103,6 +95,15 @@ namespace VortexHarmonyInstaller.ModTypes
 
             // No need to convert anything - this is a Vortex mod.
             return true;
+        }
+
+        public string[] GetDependencies()
+        {
+            List<string> dependencies = new List<string>();
+            if ((Data != null) && (Data.Base_Dependencies != null))
+                dependencies.Concat(Data.Base_Dependencies);
+
+            return dependencies.ToArray();
         }
     }
 }

@@ -1,9 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 using Newtonsoft.Json;
 
+using VortexHarmonyInstaller;
 using VortexHarmonyInstaller.Delegates;
+using VortexHarmonyInstaller.ModTypes;
 
 namespace UnityModManagerNet
 {
@@ -50,7 +54,7 @@ namespace UnityModManagerNet
                 return Id.GetHashCode();
             }
 
-            public ModInfo(VortexHarmonyInstaller.ModTypes.UMMData data)
+            public ModInfo(UMMData data)
             {
                 Id = data.Id;
                 DisplayName = data.DisplayName;
@@ -69,34 +73,74 @@ namespace UnityModManagerNet
         // UMM passes a ModEntry object to its mods;
         //  we're going to hijack the object, keeping only
         //  properties and functionality that are relevant to us.
-        public class ModEntry : VortexHarmonyInstaller.IExposedMod
+        public class ModEntry : IExposedMod
         {
-            public ModInfo Info;
+            public class ModLogger
+            {
+                private string m_modId;
+                public ModLogger(string id)
+                {
+                    m_modId = $"[{id}] ";
+                }
+
+                public void Log(string str)
+                {
+                    LoggerDelegates.LogInfo(m_modId + str);
+                }
+
+                public void Error(string str)
+                {
+                    LoggerDelegates.LogError(m_modId + str);
+                }
+
+                public void Critical(string str)
+                {
+                    LoggerDelegates.LogError(m_modId + str);
+                }
+
+                public void Warning(string str)
+                {
+                    LoggerDelegates.LogInfo(m_modId + str);
+                }
+
+                public void NativeLog(string str)
+                {
+                    LoggerDelegates.LogInfo(m_modId + str);
+                }
+                
+                public void LogException(string key, Exception e)
+                {
+                    LoggerDelegates.LogError(m_modId + key, e);
+                }
+
+                public void LogException(Exception e)
+                {
+                    LoggerDelegates.LogError(m_modId, e);
+                }
+            }
+
+            // Full path to the mod's folder.
+            public readonly string Path;
+            public readonly ModLogger Logger;
+            public readonly ModInfo Info;
 
             // Reference to the mod's data
-            private VortexHarmonyInstaller.ModTypes.UMMData m_ModData = null;
-            public VortexHarmonyInstaller.ModTypes.UMMData ModData
+            private UMMData m_ModData = null;
+            public UMMData ModData
             {
                 get { return m_ModData; }
                 private set { m_ModData = value; }
             }
 
-            // Full path to the mod's folder.
-            private string m_strModPath;
-            public string Path
-            {
-                get { return m_strModPath; }
-                private set { m_strModPath = value; }
-            }
-
-            public ModEntry(VortexHarmonyInstaller.ModTypes.UMMData data, string strModPath)
+            public ModEntry(UMMData data, string strModPath)
             {
                 m_ModData = data;
-                m_strModPath = strModPath;
+                Path = strModPath;
                 Info = new ModInfo(data);
+                Logger = new ModLogger(Info.Id);
             }
 
-            public static ModEntry GetModEntry(VortexHarmonyInstaller.ModTypes.UMMData data, string strModPath)
+            public static ModEntry GetModEntry(UMMData data, string strModPath)
             {
                 if (data == null)
                     throw new NullReferenceException("Must provide valid data");
@@ -158,54 +202,18 @@ namespace UnityModManagerNet
             public Action<ModEntry, float> OnUpdate = null;
             public Action<ModEntry, float> OnLateUpdate = null;
             public Action<ModEntry, float> OnFixedUpdate = null;
+        }
 
-            public static class Logger
-            {
-                public static void NativeLog(string str)
-                {
-                    LoggerDelegates.LogInfo(str);
-                }
+        public static ModEntry FindMod(string id)
+        {
+            IExposedMod mod = BaseModType.ExposedMods
+                .Where(entry => ((entry as ModEntry) != null) && (entry.GetModName() == id))
+                .SingleOrDefault();
 
-                public static void NativeLog(string str, string prefix)
-                {
-                    LoggerDelegates.LogInfo(prefix + str);
-                }
+            if (mod == null)
+                LoggerDelegates.LogError($"Unable to find mod: {id}");
 
-                public static void Log(string str)
-                {
-                    LoggerDelegates.LogInfo(str);
-                }
-
-                public static void Log(string str, string prefix)
-                {
-                    LoggerDelegates.LogInfo(prefix + str);
-                }
-
-                public static void Error(string str)
-                {
-                    LoggerDelegates.LogError(str);
-                }
-
-                public static void Error(string str, string prefix)
-                {
-                    LoggerDelegates.LogError(prefix + str);
-                }
-
-                public static void LogException(Exception e)
-                {
-                    LoggerDelegates.LogError(e);
-                }
-
-                public static void LogException(string key, Exception e)
-                {
-                    LoggerDelegates.LogError(e);
-                }
-
-                public static void LogException(string key, Exception e, string prefix)
-                {
-                    LoggerDelegates.LogError(e);
-                }
-            }
+            return (mod as ModEntry);
         }
     }
 }

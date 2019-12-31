@@ -86,17 +86,6 @@ namespace VortexUnity
         public static bool Ctrl { get { return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl); } }
     }
 
-    // UMM GUI Style wrapper. Exposed primarily for UMM mods to use.
-    public static class UI
-    {
-        public static GUIStyle bold { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.H2]; } }
-        public static GUIStyle h1 { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.H1]; } }
-        public static GUIStyle h2 { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.H2]; } }
-        public static GUIStyle window { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.WINDOW]; } }
-        public static GUIStyle button { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.BUTTON]; } }
-        public static GUIStyle settings { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.SETTINGS]; } }
-    }
-
     public struct SCursorStatus
     {
         public CursorLockMode LockState;

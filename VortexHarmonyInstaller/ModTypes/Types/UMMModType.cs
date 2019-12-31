@@ -8,11 +8,18 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Reflection;
 
+using static UnityModManagerNet.UnityModManager;
+using System.Collections.Generic;
+
 namespace VortexHarmonyInstaller.ModTypes
 {
     internal partial class Constants
     {
+        internal const string IL_EXT = ".il";
+
         internal const string UMM_MANIFEST_FILENAME = "Info.json";
+
+        internal const string VIGO_FILENAME = "VortexUnity.dll";
 
         internal const string UMM_ASSEMBLY_REF_NAME = "UnityModManager";
 
@@ -28,8 +35,8 @@ namespace VortexHarmonyInstaller.ModTypes
     {
         internal class AssemblyIsInjectedException : Exception
         {
-            internal AssemblyIsInjectedException(string strMessage)
-                : base(strMessage) { }
+            internal AssemblyIsInjectedException(string message)
+                : base(message) { }
         }
 
         internal class InvalidArgumentException : Exception
@@ -154,17 +161,30 @@ namespace VortexHarmonyInstaller.ModTypes
                 return false;
             }
 
+            string tempFile = dllPath + Constants.VORTEX_TEMP_SUFFIX;
+            string instructionsFile = null;
             try
             {
-                string tempFile = dllPath + Constants.VORTEX_TEMP_SUFFIX;
                 string backUpFile = dllPath + Constants.VORTEX_BACKUP;
                 if (!File.Exists(backUpFile))
                     Util.Backup(dllPath);
 
+                // Create a temporary file for us to manipulate.
                 File.Copy(dllPath, tempFile, true);
-                AssemblyDefinition modAssembly = modAssembly = AssemblyDefinition.ReadAssembly(tempFile);
 
+                // UMM mods need to have an assembly reference to the VortexUnity.dll file
+                //  containing UI specific functionality.
+                AssemblyDefinition vigoDef = AssemblyDefinition.ReadAssembly(Path.Combine(VortexPatcher.CurrentDataPath, Constants.VIGO_FILENAME));
+                AssemblyNameReference vigoRef = AssemblyNameReference.Parse(vigoDef.FullName);
+                string vigoName = vigoDef.Name.Name;
+                AssemblyDefinition modAssembly = AssemblyDefinition.ReadAssembly(tempFile);
+
+                // Add the reference to VIGO.
+                modAssembly.MainModule.ImportReference(vigoRef.GetType());
+                modAssembly.MainModule.AssemblyReferences.Add(vigoRef);
                 var references = modAssembly.MainModule.AssemblyReferences;
+
+                // Find the UMM reference
                 AssemblyNameReference ummRef = references.FirstOrDefault(res => res.Name == Constants.UMM_ASSEMBLY_REF_NAME);
                 if (ummRef == null)
                 {
@@ -179,17 +199,55 @@ namespace VortexHarmonyInstaller.ModTypes
 
                 modAssembly.Write(dllPath);
                 modAssembly.Dispose();
+                vigoDef.Dispose();
 
-                File.Delete(tempFile);
+                File.Copy(dllPath, tempFile, true);
 
+                // We're going to re-assemble the mod file; to do this we need to find out which
+                //  .NET assembler to use (version is important)
+                Version assemblerVersion = Util.GetFrameworkVer(dllPath);
+
+                // Disassemble and extract any embedded resource files we can find.
+                string disassembled = VortexHarmonyInstaller.Util.Disassembler.DisassembleFile(tempFile, true);
+
+                // Find the reference id for VIGO within the assembly, we're
+                //  going to use this value to replace the existing UMM refId.
+                string pattern = @"(.assembly extern )(\/.*\/)( VortexUnity)";
+                string refId = Regex.Match(disassembled, pattern).Groups[2].Value;
+
+                // UMM distributes 2 nearly identical Harmony assemblies
+                //  one which seems to reference GAC assemblies directly (Harmony12),
+                //  and the normally distributed assembly which will look for assemlies
+                //  locally before resorting to GAC (An optimization?)
+                //  Either way, we're going to use the assembly we distribute instead and
+                //  remove Harmony12 if we find it.
+                disassembled = disassembled.Replace("Harmony12", "Harmony");
+                
+                // This is one UGLY pattern but will have to do in the meantime.
+                //  We use regex to find all UI calls which will now point to VortexHarmonyInstaller
+                //  as we replaced the UMM reference, and re-point the instruction to VortexUnity
+                //  TODO: There must be a better way of doing this - more research is needed.
+                pattern = @"(VortexHarmonyInstaller)(\/\*.*?\*\/)(\]UnityModManagerNet\.UnityModManager\/\*.*?\*\/\/UI)";
+                disassembled = Regex.Replace(disassembled, pattern, m => vigoName + refId + m.Groups[3].Value);
+                instructionsFile = tempFile + Constants.IL_EXT;
+
+                // Write the data to an IL file and delete the current dll file
+                //  as we want to replace it. We backed up this file earlier so we should be fine.
+                File.WriteAllText(instructionsFile, disassembled);
+                File.Delete(dllPath);
+
+                // Generate the new Assembly!
+                VortexHarmonyInstaller.Util.Assembler.AssembleFile(instructionsFile, dllPath, assemblerVersion);
+
+                // Ensure that the mod is aware of its assembly.
                 m_ModAssembly = Assembly.LoadFile(dllPath);
-
+                VortexPatcher.Logger.Info($"Assembly {Path.GetFileName(dllPath)} converted successfully.");
                 return true;
             }
-            catch (Exceptions.AssemblyIsInjectedException exc)
+            catch (Exceptions.AssemblyIsInjectedException)
             {
                 // We already dealt with this mod, no need to hijack its calls again.
-                VortexPatcher.Logger.Debug(exc.Message);
+                VortexPatcher.Logger.Info($"Assembly {Path.GetFileName(dllPath)} is already patched.");
                 return true;
             }
             catch (Exception exc)
@@ -197,6 +255,31 @@ namespace VortexHarmonyInstaller.ModTypes
                 Util.RestoreBackup(dllPath);
                 VortexPatcher.Logger.Error("Assembly conversion failed", exc);
                 return false;
+            }
+            finally
+            {
+                // Cleanup
+                AssemblyDefinition modAssembly = AssemblyDefinition.ReadAssembly(tempFile);
+                if (modAssembly.MainModule.HasResources)
+                {
+                    Resource[] resources = modAssembly.MainModule.Resources.Where(res => res.ResourceType == ResourceType.Embedded).ToArray();
+                    foreach(Resource res in resources)
+                    {
+                        string possiblePath = Path.Combine(Path.GetDirectoryName(dllPath), res.Name);
+                        if (File.Exists(possiblePath))
+                            File.Delete(possiblePath);
+                    }
+                }
+
+                modAssembly.Dispose();
+                modAssembly = null;
+
+                // We have no guarantee that the file reference has been released yet
+                //  but we can try to delete anyway.
+                Util.TryDelete(tempFile);
+
+                if ((instructionsFile != null) && (File.Exists(instructionsFile)))
+                    Util.TryDelete(instructionsFile);
             }
         }
 
@@ -244,7 +327,7 @@ namespace VortexHarmonyInstaller.ModTypes
                 if (null == methodInfo)
                     throw new NullReferenceException("Failed to find entry Method in mod assembly");
 
-                UnityModManagerNet.UnityModManager.ModEntry modEntry = UnityModManagerNet.UnityModManager.ModEntry.GetModEntry(data, m_ModAssembly.Location);
+                ModEntry modEntry = ModEntry.GetModEntry(data, m_ModAssembly.Location);
                 object[] param = new object[] { modEntry };
                 methodInfo.Invoke(null, param);
 
@@ -275,6 +358,15 @@ namespace VortexHarmonyInstaller.ModTypes
             
             ParseData(ModDataContainer.Resolve<UMMData>());
             return m_ModData != null;
+        }
+
+        public string[] GetDependencies()
+        {
+            List<string> dependencies = new List<string>();
+            if ((Data != null) && (Data.Base_Dependencies != null))
+                dependencies.Concat(Data.Requirements);
+
+            return dependencies.ToArray();
         }
     }
 }

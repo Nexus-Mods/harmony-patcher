@@ -2,13 +2,48 @@
 {
     public interface IModType
     {
-        bool ParseModData(string strManifestPath);
+        /// <summary>
+        /// Function will process and deserialize a mod's manifest
+        /// into a data object which can then be used to expose data
+        /// to the game itself.
+        /// </summary>
+        /// <param name="manifestPath"></param>
+        /// <returns></returns>
+        bool ParseModData(string manifestPath);
 
+        /// <summary>
+        /// This function should be primarily used for non-native mods
+        /// which have been developed for other mod managers, this is to
+        /// bring the mod assembly itself in-line with what Vortex expects.
+        /// </summary>
+        /// <param name="strDllPath"></param>
+        /// <returns></returns>
         bool ConvertAssemblyReferences(string strDllPath);
 
+        /// <summary>
+        /// Returns the name/id of this mod entry.
+        /// </summary>
+        /// <returns></returns>
         string GetModName();
 
+        /// <summary>
+        /// Where the magic happens, aka the mod's entry point should be invoked. 
+        /// </summary>
         void InjectPatches();
+
+        /// <summary>
+        /// Retrieves the mod's data.
+        /// </summary>
+        /// <returns></returns>
+        IParsedModData GetModData();
+
+        /// <summary>
+        /// Returns an array of strings containing names/ids of mods that
+        /// should be loaded before this mod. These are defined inside the
+        /// mod's manifest file
+        /// </summary>
+        /// <returns></returns>
+        string[] GetDependencies();
     }
 
     public interface IParsedModData
