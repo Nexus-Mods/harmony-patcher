@@ -159,9 +159,20 @@ namespace VortexHarmonyInstaller.ModTypes
             set { m_strGameId = value; }
         }
 
+        public string AssemblyName
+        {
+            get { return m_strAssemblyName; }
+            set { m_strAssemblyName = value; }
+        }
+
         [JsonIgnore]
         public string ModPath {
             get { return Path.GetDirectoryName(m_strManifestPath); }
+        }
+
+        public string GetTargetAssemblyFileName()
+        {
+            return (string.IsNullOrEmpty(AssemblyName)) ? null : AssemblyName;
         }
 
         public bool ParseManifest(string strManifestPath)

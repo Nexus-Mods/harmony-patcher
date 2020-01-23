@@ -11,6 +11,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VortexHarmonyInstaller", "VortexHarmonyInstaller\VortexHarmonyInstaller.csproj", "{B296D0A4-1114-4690-9520-463954B4DB8D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VortexUnityManager", "VortexUnity\VortexUnityManager.csproj", "{E0FE4687-0E26-49B1-9755-6C43E498899F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B296D0A4-1114-4690-9520-463954B4DB8D} = {B296D0A4-1114-4690-9520-463954B4DB8D}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

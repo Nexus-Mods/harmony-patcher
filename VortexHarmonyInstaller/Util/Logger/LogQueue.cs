@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
+//using System.Threading;
 
 namespace VortexHarmonyInstaller.Util
 {
@@ -51,32 +51,59 @@ namespace VortexHarmonyInstaller.Util
 
     internal class LogQueue
     {
-        readonly object queueLock = new object();
-        internal Queue<LogEntry> m_queue = new Queue<LogEntry>();
+        private bool isLocked = false;
+        private Queue<LogEntry> m_queue = new Queue<LogEntry>();
+        private List<LogEntry> m_backlog = new List<LogEntry>();
 
         internal void Enqueue(LogEntry log)
         {
-            lock (queueLock)
+            if (Lock())
             {
-                m_queue.Enqueue(log);
+                // We got the lock, enqueue backlog first, then the new log.
+                foreach(LogEntry entry in m_backlog)
+                {
+                    m_queue.Enqueue(entry);
+                }
 
-                // Releases the lock.
-                Monitor.Pulse(queueLock);
+                m_backlog.Clear();
+
+                m_queue.Enqueue(log);
+                Release();
+            }
+            else
+            {
+                // We don't have the lock, add to backlog
+                m_backlog.Add(log);
             }
         } 
 
         internal string Dequeue()
         {
-            lock (queueLock)
+            string ret = string.Empty;
+            if (Lock())
             {
-                while (m_queue.Count == 0)
-                {
-                    // Nothing to do here - wait.
-                    Monitor.Wait(queueLock);
-                }
+                if (m_queue.Count > 0)
+                    ret = m_queue.Dequeue().ToString();
+
+                Release();
             }
 
-            return m_queue.Dequeue().ToString();
+            return ret;
+        }
+
+        /// <returns>true if we managed to get the lock, false otherwise</returns>
+        private bool Lock()
+        {
+            if (isLocked)
+                return false;
+
+            isLocked = true;
+            return true;
+        }
+
+        private void Release()
+        {
+            isLocked = false;
         }
     }
 }

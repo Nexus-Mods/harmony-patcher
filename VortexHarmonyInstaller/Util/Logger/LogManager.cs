@@ -52,7 +52,6 @@ namespace VortexHarmonyInstaller.Util
 
         public void DebugFormat(IFormatProvider provider, string format, params object[] args)
         {
-            // Format provider? don't care.
             DebugFormat(format, args);
         }
 

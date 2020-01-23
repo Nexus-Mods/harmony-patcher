@@ -318,21 +318,21 @@ namespace VortexHarmonyInstaller.ModTypes
         protected Assembly m_ModAssembly = null;
         public Assembly ModAssembly { get { return m_ModAssembly; } }
 
-        // Will hold parsed mod information from JSON files.
-        protected IParsedModData m_ModData = null;
-        internal IParsedModData ModData { get { return m_ModData; } }
-
         protected static UnityContainer m_ModDataContainer = new UnityContainer();
         internal static UnityContainer ModDataContainer { get { return m_ModDataContainer; } }
 
         protected static List<IExposedMod> m_ExposedMods = new List<IExposedMod>();
         public static List<IExposedMod> ExposedMods { get { return m_ExposedMods; } }
 
+        // Will hold parsed mod information from JSON files.
+        protected IParsedModData m_ModData = null;
+        public IParsedModData ModData { get { return m_ModData; } }
+
         public BaseModType()
         {
         }
 
-        public IParsedModData GetModData()
+        public virtual IParsedModData GetModData()
         {
             return ModData;
         }

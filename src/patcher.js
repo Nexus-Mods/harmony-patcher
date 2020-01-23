@@ -68,8 +68,9 @@ const PATCHER_ERRORS = {
 //  -x -> Location where we're planning to store our mods.
 function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath) {
   let lastError;
+  const buildInGameUI = () => (remove) ? Promise.resolve() : buildVIGO(dataPath);
   //return copyAssemblies(dataPath).then(() => debugMSBuild());
-  return buildVIGO(dataPath).then(() => cleanAssemblies())
+  return buildInGameUI().then(() => cleanAssemblies())
   .then(() => new Promise((resolve, reject) => {
     const wstream = fs.createWriteStream(LOG_FILE_PATH);
     let patcher;
@@ -93,8 +94,8 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath) {
     });
 
     patcher.stderr.on('data', data => {
-      lastError = parseErrorData(data.toString());
-      const formatted = data.toString().split('\n');
+      const formatted = data.toString().split('\n').filter(line => !!line);
+      lastError = parseErrorData(formatted);
       formatted.forEach(line => {
         wstream.write(line + '\n');
       });
@@ -111,7 +112,8 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath) {
         ? reject(createError(code, lastError))
         : resolve();
     });
-  }));
+  }))
+  //.then(() => );
 }
 
 function cleanAssemblies() {
@@ -264,13 +266,22 @@ function initHarmonyUI(context, extensionPath, dataPath, entryPoint, modsPath, g
 }
 
 function createError(errorCode, lastError) {
+  const createErrorMessage = (error) => {
+    return (!!error.RaisedException)
+      ? error.Message + '\n'
+        + error.RaisedException.ClassName
+        + ':' + error.RaisedException.Message
+      : error.Message;
+  };
+
   if (lastError !== undefined) {
-    const errorMessage = (!!lastError.RaisedException)
-      ? lastError.Message + '\n'
-        + lastError.RaisedException.ClassName
-        + ':' + lastError.RaisedException.Message
-      : lastError.Message;
-    return new Error(errorMessage);
+    let err;
+    if (!!lastError.errors) {
+      err = lastError.errors.map(errInstance => createErrorMessage(errInstance)).join('\n');
+    } else {
+      err = createErrorMessage(lastError);
+    }
+    return new Error(err);
   } else {
     const errorKeys = Object.keys(PATCHER_ERRORS);
     return (errorKeys.find(key => errorCode.toString() === key) !== undefined)
@@ -309,8 +320,10 @@ function getDiscoveryPath(state, gameId) {
 }
 
 function parseErrorData(data) {
+  const errorData = (Array.isArray(data))
+    ? `{ "errors": ${data.toString()} }` : data;
   try {
-    const error = JSON.parse(data);
+    const error = JSON.parse(errorData);
     return error;
   } catch (err) {
     log('error', 'Failed to parse injector response message', err);
@@ -406,7 +419,7 @@ function LoadOrderBase(props) {
                     id: 'save',
                     className: 'btn btn-default',
                     onClick: () => saveLoadOrder(props),
-                  }, 
+                  },
                   props.t('Save changes', { ns: props.I18N }))
               ))
         )))));
@@ -477,6 +490,5 @@ const LoadOrder = connect(mapStateToProps, mapDispatchToProps)(LoadOrderBase);
 
 module.exports = {
   runPatcher,
-  initHarmonyUI
+  initHarmonyUI,
 };
-//exports.default = runPatcher;

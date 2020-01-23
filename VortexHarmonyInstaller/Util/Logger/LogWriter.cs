@@ -37,11 +37,11 @@ namespace VortexHarmonyInstaller.Util
                     fs = new FileStream(m_logFilePath, FileMode.Append);
                     using (StreamWriter writer = new StreamWriter(fs))
                     {
-                        string logEntry = VortexPatcher.Logger.Dequeue();
-                        if (!string.IsNullOrEmpty(logEntry))
+                        string logMessage = VortexPatcher.Logger.Dequeue();
+                        if (!string.IsNullOrEmpty(logMessage))
                         {
-                            Console.WriteLine(logEntry);
-                            writer.WriteLine(logEntry);
+                            Console.WriteLine(logMessage);
+                            writer.WriteLine(logMessage);
                         }
                     }
                 }

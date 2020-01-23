@@ -46,6 +46,11 @@ namespace VortexHarmonyInstaller.ModTypes
             set { m_strName = value; }
         }
 
+        public string GetTargetAssemblyFileName()
+        {
+            throw new NotImplementedException();
+        }
+
         public bool ParseManifest(string strManifestPath)
         {
             try

@@ -62,6 +62,19 @@
         /// <param name="strSettingsPath">Path to the mod's settings file</param>
         /// <returns>true if parsed and stored successfully</returns>
         bool ParseSettings(string strSettingsPath);
+
+        /// <summary>
+        /// This function expects the mod's data to be populated and accessible!
+        ///  Will attempt to retrieve the target assembly from the mod manifest;
+        ///  this is required when a mod root directory contains more than a single
+        ///  assembly file and we need to resolve which one to inject.
+        /// </summary>
+        /// <returns>
+        /// The filename of the mod's target assembly e.g. "CheatingGoose.dll";
+        ///  alternatively will return null if the mod author did not provide a
+        ///  target assembly for the mod inside the manifest file.
+        /// </returns>
+        string GetTargetAssemblyFileName();
     }
 
     public interface IExposedMod

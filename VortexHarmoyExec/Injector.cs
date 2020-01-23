@@ -140,28 +140,35 @@ namespace VortexHarmonyExec
         /// Restore any back up files we may have created for the original
         ///  filename.
         /// </summary>
-        /// <param name="strFilePath"></param>
-        internal static void RestoreBackup(string strFilePath)
+        /// <param name="filePath"></param>
+        /// <param name="reportError"></param>
+        internal static void RestoreBackup(string filePath, bool reportError = true)
         {
-            string strBackupFile = strFilePath + Constants.VORTEX_BACKUP_TAG;
-            if (!File.Exists(strBackupFile))
+            string backupFile = filePath + Constants.VORTEX_BACKUP_TAG;
+            if (!File.Exists(backupFile))
             {
-                string strResponse = JSONResponse.CreateSerializedResponse(
-                    string.Format("Backup is missing {0}", strBackupFile),
+                if (!reportError)
+                    return;
+
+                string response = JSONResponse.CreateSerializedResponse(
+                    string.Format("Backup is missing {0}", backupFile),
                     Enums.EErrorCode.FILE_OPERATION_ERROR);
-                Console.Error.WriteLine(strResponse);
+                Console.Error.WriteLine(response);
                 return;
             }
 
             try
             {
-                File.Copy(strBackupFile, strFilePath, true);
-                File.Delete(strBackupFile);
+                File.Copy(backupFile, filePath, true);
+                File.Delete(backupFile);
             }
             catch (Exception exc)
             {
-                string strResponse = JSONResponse.CreateSerializedResponse(exc.Message, Enums.EErrorCode.FILE_OPERATION_ERROR, exc);
-                Console.Error.WriteLine(strResponse);
+                if (!reportError)
+                    return;
+
+                string response = JSONResponse.CreateSerializedResponse(exc.Message, Enums.EErrorCode.FILE_OPERATION_ERROR, exc);
+                Console.Error.WriteLine(response);
             }
         }
 

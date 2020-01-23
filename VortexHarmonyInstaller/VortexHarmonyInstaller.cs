@@ -20,6 +20,8 @@ namespace VortexHarmonyInstaller
         public const string INSTALLER_ASSEMBLY_NAME = nameof(VortexHarmonyInstaller);
 
         public const string UNITY_ENGINE_LIB = "UnityEngine.dll";
+
+        public const string LOAD_ORDER_FILENAME = "load_order.txt";
     }
 
     internal class MissingAssemblyResolver : BaseAssemblyResolver
@@ -114,10 +116,51 @@ namespace VortexHarmonyInstaller
             FileInfo[] modLibFiles = new DirectoryInfo(m_modsPath).GetFiles("*.dll", SearchOption.AllDirectories);
             ResolveModList(modLibFiles);
 
-            Logger.Info("Sorting mod load order");
-            // We should now have the mod list populated and ready, we can now
-            //  sort the mods according to what the user selected.
-            //m_liMods.Sort(IComparer)
+            string expectedLoadOrderFileLocation = Path.Combine(m_modsPath, Constants.LOAD_ORDER_FILENAME);
+            if (File.Exists(expectedLoadOrderFileLocation))
+            {
+                Logger.Info("Sorting mod load order");
+                Queue<FileInfo> sorted = new Queue<FileInfo>();
+                string[] loadOrder = File.ReadAllLines(expectedLoadOrderFileLocation);
+                foreach (string orderEntry in loadOrder)
+                {
+                    if (orderEntry == string.Empty)
+                        continue;
+
+                    FileInfo modAssembly = modLibFiles.FirstOrDefault(file => file.Name == orderEntry);
+                    if (modAssembly != null)
+                    {
+                        sorted.Enqueue(modAssembly);
+                    }
+                    else
+                    {
+                        // We couldn't find the assembly for this orderEntry... Log this and continue.
+                        Logger.Warn($"Cannot find mod assembly for order entry: {orderEntry}");
+                        continue;
+                    }
+                }
+
+                // Check if we managed to sort all assemblies and queue any leftover mods.
+                if (modLibFiles.Length != sorted.Count)
+                {
+                    List<FileInfo> diff = modLibFiles.Where(modLib => !sorted.Any(assemblyName => assemblyName.Name == modLib.Name)).ToList();
+                    string missingEntries = string.Join(", ", diff.Select(entry => entry.Name).ToArray());
+                    Logger.Warn($"Load order did contain the following mods: {missingEntries}; - these will be queued at the end of the mod list");
+
+                    foreach (FileInfo file in diff)
+                        sorted.Enqueue(file);
+                }
+
+                string finalList = string.Join(", ", sorted.Select(entry => entry.Name).ToArray());
+                Logger.Debug($"Final list is: {finalList}");
+
+                modLibFiles = sorted.ToArray();
+                Logger.Info("Finished sorting");
+            }
+            else
+            {
+                Logger.Warn($"Load order file is missing, expected file location is: {expectedLoadOrderFileLocation}");
+            }
 
             Logger.Info("Starting to inject mods");
             foreach (var mod in m_liMods)
@@ -141,6 +184,28 @@ namespace VortexHarmonyInstaller
 
         public static void ResolveModList(FileInfo[] modFiles)
         {
+            // Certain mods may contain multiple dll files at the mod's root directory
+            //  when encountering such a scenario, we expect the mod author to specify
+            //  which assembly to use in the manifest file. The func will return true
+            //  if the mod is to be inserted into the mod list; false otherwise.
+            Func<FileInfo, IModType, bool> IsModAssembly = (dllFile, modType) =>
+            {
+                string modDir = dllFile.DirectoryName;
+                FileInfo[] assemblies = new DirectoryInfo(modDir).GetFiles("*.dll", SearchOption.TopDirectoryOnly);
+                if (assemblies.Length > 1)
+                {
+                    string targetAssembly = modType.GetModData().GetTargetAssemblyFileName();
+                    if (string.IsNullOrEmpty(targetAssembly))
+                        return false;
+
+                    return (targetAssembly.ToLower() == dllFile.Name.ToLower());
+                }
+                else
+                {
+                    return true;
+                }
+            };
+
             foreach (FileInfo dll in modFiles)
             {
                 var modType = IdentifyModType(dll.DirectoryName);
@@ -149,6 +214,9 @@ namespace VortexHarmonyInstaller
                     Logger.ErrorFormat("Unidentified modType {0}", dll.Name);
                     continue;
                 }
+
+                if (!IsModAssembly(dll, modType))
+                    continue;
 
                 // Attempt to run assembly conversions.
                 if (!modType.ConvertAssemblyReferences(dll.FullName))
