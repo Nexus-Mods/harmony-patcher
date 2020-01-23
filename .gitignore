@@ -1,5 +1,7 @@
 .vs/
 *.suo
+*.pdb
+*.csproj.user
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
@@ -9,3 +11,6 @@ bld/
 [Bb]in/
 [Oo]bj/
 node_modules
+packages
+dist/UnityEngine.*
+dist/VortexHarmoyExec.*

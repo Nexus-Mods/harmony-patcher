@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
+
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reflection;
 
 using VortexHarmonyInstaller;
 using VortexHarmonyInstaller.Delegates;
@@ -13,9 +12,26 @@ namespace VortexUnity
 {
     public class VortexUnityManager
     {
+        private static Assembly AssemblyResolver(object sender, ResolveEventArgs args)
+        {
+            string currentDir = Directory.GetCurrentDirectory();
+            string[] libs = Directory.GetFiles(currentDir, "*.dll", SearchOption.AllDirectories);
+
+            string assemblyPath = libs
+                .Where(lib => Path.GetFileName(lib).Contains(args.Name))
+                .SingleOrDefault();
+
+            return (assemblyPath != null)
+                ? Assembly.LoadFile(assemblyPath)
+                : null;
+        }
+
         public static void RunUnityPatcher()
         {
-            VortexHarmonyInstaller.VortexPatcher.ModsInjectionComplete += LoadVortexUI;
+            AppDomain currentDomain = AppDomain.CurrentDomain;
+            currentDomain.AssemblyResolve += new ResolveEventHandler(AssemblyResolver);
+
+            VortexPatcher.ModsInjectionComplete += LoadVortexUI;
         }
 
         public static void LoadVortexUI(List<IExposedMod> exposedMods)

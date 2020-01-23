@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 
@@ -50,6 +46,11 @@ namespace VortexHarmonyInstaller.ModTypes
             set { m_strName = value; }
         }
 
+        public string GetTargetAssemblyFileName()
+        {
+            throw new NotImplementedException();
+        }
+
         public bool ParseManifest(string strManifestPath)
         {
             try
@@ -64,7 +65,7 @@ namespace VortexHarmonyInstaller.ModTypes
                 else
                     return false;
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 return false;
             }

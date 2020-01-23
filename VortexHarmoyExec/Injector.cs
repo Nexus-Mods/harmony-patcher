@@ -2,19 +2,10 @@
 using Mono.Cecil.Cil;
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-
-using Harmony;
-using VortexHarmonyInstaller;
 using VortexHarmoyExec;
 using System.Diagnostics;
-using System.ComponentModel;
-using System.Net.Http;
 using System.Net;
 
 namespace VortexHarmonyExec
@@ -45,9 +36,6 @@ namespace VortexHarmonyExec
         // The game's assembly file.
         internal const string UNITY_ASSEMBLY_LIB = "Assembly-CSharp.dll";
         //internal const string UNITY_ASSEMBLY_LIB = "TestAssembly.dll";
-
-        // Mods are going to be stored here.
-        internal const string MODS_DIRNAME = "VortexMods";
 
         // Suffix identifying Vortex's backup files.
         internal const string VORTEX_BACKUP_TAG = "_vortex_assembly_backup";
@@ -152,28 +140,35 @@ namespace VortexHarmonyExec
         /// Restore any back up files we may have created for the original
         ///  filename.
         /// </summary>
-        /// <param name="strFilePath"></param>
-        internal static void RestoreBackup(string strFilePath)
+        /// <param name="filePath"></param>
+        /// <param name="reportError"></param>
+        internal static void RestoreBackup(string filePath, bool reportError = true)
         {
-            string strBackupFile = strFilePath + Constants.VORTEX_BACKUP_TAG;
-            if (!File.Exists(strBackupFile))
+            string backupFile = filePath + Constants.VORTEX_BACKUP_TAG;
+            if (!File.Exists(backupFile))
             {
-                string strResponse = JSONResponse.CreateSerializedResponse(
-                    string.Format("Backup is missing {0}", strBackupFile),
+                if (!reportError)
+                    return;
+
+                string response = JSONResponse.CreateSerializedResponse(
+                    string.Format("Backup is missing {0}", backupFile),
                     Enums.EErrorCode.FILE_OPERATION_ERROR);
-                Console.Error.WriteLine(strResponse);
+                Console.Error.WriteLine(response);
                 return;
             }
 
             try
             {
-                File.Copy(strBackupFile, strFilePath, true);
-                File.Delete(strBackupFile);
+                File.Copy(backupFile, filePath, true);
+                File.Delete(backupFile);
             }
             catch (Exception exc)
             {
-                string strResponse = JSONResponse.CreateSerializedResponse(exc.Message, Enums.EErrorCode.FILE_OPERATION_ERROR, exc);
-                Console.Error.WriteLine(strResponse);
+                if (!reportError)
+                    return;
+
+                string response = JSONResponse.CreateSerializedResponse(exc.Message, Enums.EErrorCode.FILE_OPERATION_ERROR, exc);
+                Console.Error.WriteLine(response);
             }
         }
 
@@ -234,6 +229,13 @@ namespace VortexHarmonyExec
             try
             {
                 AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(tempFile);
+                if (assembly.Name.Version.Major <= 3)
+                {
+                    // There doesn't seem to be a reason to replace the corlib
+                    //  for older .NET versions.
+                    assembly.Dispose();
+                    return true;
+                }
                 TypeDefinition type = assembly.MainModule.GetType(entryPoint[0]);
                 if (null == type)
                     throw new NullReferenceException("Failed to find entry Type in mod assembly");
@@ -253,7 +255,7 @@ namespace VortexHarmonyExec
 
                 assembly.Dispose();
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 bReflectionEnabled = false;
             }
@@ -266,7 +268,7 @@ namespace VortexHarmonyExec
     internal class MissingAssemblyResolver : BaseAssemblyResolver
     {
         private DefaultAssemblyResolver m_AssemblyResolver;
-        private string m_strAssemblyPath;
+        private readonly string m_strAssemblyPath;
 
         public MissingAssemblyResolver(string strAssemblyPath)
         {
@@ -282,7 +284,7 @@ namespace VortexHarmonyExec
             {
                 assembly = m_AssemblyResolver.Resolve(name);
             }
-            catch (AssemblyResolutionException ex)
+            catch (AssemblyResolutionException)
             {
                 string[] libraries = Directory.GetFiles(m_strAssemblyPath, "*.dll", SearchOption.AllDirectories);
                 string missingLib = libraries.Where(lib => lib.Contains(name.Name)).SingleOrDefault();
@@ -299,12 +301,11 @@ namespace VortexHarmonyExec
 
         private static string m_strBundledAssetsDest;
 
-        private bool m_bInjectGUI;
-        private string m_strExtensionPath;
-        private string m_strDataPath;
+        private readonly bool m_bInjectGUI;
+        private readonly string m_strExtensionPath;
+        private readonly string m_strDataPath;
         private string m_strEntryPoint;
         private string m_strGameAssemblyPath;
-        private string m_strModsDirectory;
         private MissingAssemblyResolver m_resolver = null;
 
         // Array of mono mscrolib replacements which will re-enable reflection
@@ -319,16 +320,19 @@ namespace VortexHarmonyExec
         // Array of files we need to deploy/remove to/from the game's datapath.
         private static string[] _LIB_FILES = new string[] {
             "0Harmony.dll",
-            "log4net.config",
-            "log4net.dll",
+            "Microsoft.Practices.ServiceLocation.dll",
+            "Microsoft.Practices.Unity.Configuration.dll",
+            "Microsoft.Practices.Unity.dll",
+            "Microsoft.Practices.Unity.Interception.Configuration.dll",
+            "Microsoft.Practices.Unity.Interception.dll",
             "Mono.Cecil.dll",
             "Mono.Cecil.Mdb.dll",
             "Mono.Cecil.Pdb.dll",
             "Mono.Cecil.Rocks.dll",
             "Newtonsoft.Json.dll",
+            "System.Data.dll",
+            "System.Runtime.Serialization.dll",
             "ObjectDumper.dll",
-            "Unity.Abstractions.dll",
-            "Unity.Container.dll",
             "VortexHarmonyInstaller.dll",
         };
 
@@ -340,7 +344,9 @@ namespace VortexHarmonyExec
                     ? Path.GetDirectoryName(strDataPath)
                     : strDataPath;
 
-                m_strBundledAssetsDest = Path.Combine(m_strDataPath, "VortexBundles", "UI");
+                // .NET 3.5 System.IO.Path doesn't support more than two arguments....
+                string uiBundlePath = Path.Combine("VortexBundles", "UI");
+                m_strBundledAssetsDest = Path.Combine(m_strDataPath, uiBundlePath);
                 m_strExtensionPath = VortexHarmonyManager.ExtensionPath;
                 m_strEntryPoint = strEntryPoint;
 
@@ -358,7 +364,6 @@ namespace VortexHarmonyExec
                     _LIB_FILES[_LIB_FILES.Length - 1] = "VortexUnity.dll";
                 }
 
-                m_strModsDirectory = Path.Combine(m_strDataPath, Constants.MODS_DIRNAME);
                 m_resolver = new MissingAssemblyResolver(m_strDataPath);
             }
             catch (Exception exc)
@@ -427,14 +432,16 @@ namespace VortexHarmonyExec
                         throw new EntryPointNotFoundException("Invalid entry point");
                     }
 
-                    methodDefinition.Body.GetILProcessor().InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(patcherMethod)));
+                    ILProcessor ilProcessor = methodDefinition.Body.GetILProcessor();
+                    ilProcessor.InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Ldstr, VortexHarmonyManager.ModsFolder));
+                    ilProcessor.InsertBefore(methodDefinition.Body.Instructions[1], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(patcherMethod)));
                     if (m_bInjectGUI)
                     {
                         try
                         {
                             AssemblyDefinition guiPatcher = AssemblyDefinition.ReadAssembly(Path.Combine(m_strDataPath, Constants.VORTEX_GUI_LIB));
                             MethodDefinition guiMethod = guiPatcher.MainModule.GetType(unityPatcher[0]).Methods.First(x => x.Name == unityPatcher[1]);
-                            methodDefinition.Body.GetILProcessor().InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(guiMethod)));
+                            ilProcessor.InsertBefore(methodDefinition.Body.Instructions[0], Instruction.Create(OpCodes.Call, methodDefinition.Module.ImportReference(guiMethod)));
                         }
                         catch (Exception exc)
                         {
@@ -599,13 +606,32 @@ namespace VortexHarmonyExec
                 throw new DirectoryNotFoundException(string.Format("Datapath {0} does not exist", m_strDataPath));
 
             string strLibPath = VortexHarmonyManager.InstallPath;
-            Directory.CreateDirectory(m_strModsDirectory);
+            Directory.CreateDirectory(VortexHarmonyManager.ModsFolder);
             string[] files = Directory.GetFiles(strLibPath, "*", SearchOption.TopDirectoryOnly)
                 .Where(file => _LIB_FILES.Contains(Path.GetFileName(file)))
                 .ToArray();
 
             foreach (string strFile in files)
-                File.Copy(strFile, Path.Combine(m_strDataPath, Path.GetFileName(strFile)), true);
+            {
+                string strDestination = Path.Combine(m_strDataPath, Path.GetFileName(strFile));
+                if (File.Exists(strDestination))
+                {
+                    FileVersionInfo ourFile = FileVersionInfo.GetVersionInfo(strFile);
+                    FileVersionInfo theirFile = FileVersionInfo.GetVersionInfo(strDestination);
+
+                    if (ourFile.FileMajorPart == theirFile.FileMajorPart)
+                        File.Copy(strFile, strDestination, true);
+                    else
+                    {
+                        string strResponse = JSONResponse.CreateSerializedResponse($"{strDestination} exists and will not be replaced", Enums.EErrorCode.UNHANDLED_FILE_VERSION);
+                        Console.Error.WriteLine(strResponse);
+                    }
+                }
+                else
+                {
+                    File.Copy(strFile, strDestination);
+                }
+            }
 
             if (m_bInjectGUI && (m_strExtensionPath != null))
             {
@@ -625,7 +651,7 @@ namespace VortexHarmonyExec
                 }
                 catch (Exception e)
                 {
-                    // This is fine, some extenions might not provide bundled UI assets.
+                    // This is fine, some extensions might not provide bundled UI assets.
                     //  all this means is that the in-game UI will not look that great.
                     string strMessage = "Extension path did not provide bundled UI assets";
                     string strResponse = JSONResponse.CreateSerializedResponse(strMessage, 0, e);

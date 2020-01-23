@@ -3,7 +3,7 @@ var path = require('path');
 
 function build() {
   var msbuild = new msbuildLib();
-  msbuild.sourcePath = path.join(__dirname, 'VortexHarmonyExt.sln');
+  msbuild.sourcePath = path.join(__dirname, 'VortexHarmoyExec', 'VortexHarmonyExec.csproj');
 
   msbuild.configuration = process.argv[2] || 'Release';
   msbuild.configuration += ';TargetFrameworkVersion=v4.5';
@@ -16,7 +16,7 @@ function build() {
 
 function restore(cb) {
   var msbuild = new msbuildLib(cb);
-
+  msbuild.sourcePath = path.join(__dirname, 'VortexHarmoyExec');
   msbuild.configuration = process.argv[2] || 'Release';
   msbuild.configuration += ';TargetFrameworkVersion=v4.5';
   msbuild.overrideParams.push('/t:restore');

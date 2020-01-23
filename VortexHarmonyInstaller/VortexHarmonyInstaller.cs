@@ -1,18 +1,17 @@
-﻿using Harmony;
-using Mono.Cecil;
+﻿using Mono.Cecil;
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
-using Unity;
+using System.Reflection;
+
+using Microsoft.Practices.Unity;
+
 using VortexHarmonyInstaller.ModTypes;
-using log4net;
+using VortexHarmonyInstaller.Util;
 
 namespace VortexHarmonyInstaller
 {
@@ -20,11 +19,38 @@ namespace VortexHarmonyInstaller
     {
         public const string INSTALLER_ASSEMBLY_NAME = nameof(VortexHarmonyInstaller);
 
-        public const string LOG_CONFIG = "log4net.config";
-
-        public const string HARMONY_LOG_FILENAME = "harmony.log";
-
         public const string UNITY_ENGINE_LIB = "UnityEngine.dll";
+
+        public const string LOAD_ORDER_FILENAME = "load_order.txt";
+    }
+
+    internal class MissingAssemblyResolver : BaseAssemblyResolver
+    {
+        private DefaultAssemblyResolver m_AssemblyResolver;
+        private readonly string m_strAssemblyPath;
+
+        public MissingAssemblyResolver(string strAssemblyPath)
+        {
+            m_AssemblyResolver = new DefaultAssemblyResolver();
+            m_AssemblyResolver.AddSearchDirectory(strAssemblyPath);
+            m_strAssemblyPath = strAssemblyPath;
+        }
+
+        public override AssemblyDefinition Resolve(AssemblyNameReference name)
+        {
+            AssemblyDefinition assembly = null;
+            try
+            {
+                assembly = m_AssemblyResolver.Resolve(name);
+            }
+            catch (Exception)
+            {
+                string[] libraries = Directory.GetFiles(m_strAssemblyPath, "*.dll", SearchOption.AllDirectories);
+                string missingLib = libraries.Where(lib => lib.Contains(name.Name)).SingleOrDefault();
+                assembly = AssemblyDefinition.ReadAssembly(missingLib);
+            }
+            return assembly;
+        }
     }
 
     public class VortexPatcher
@@ -37,7 +63,7 @@ namespace VortexHarmonyInstaller
 
         public static Version InstallerVersion { get { return m_InstallerAssembly.Name.Version; } }
 
-        public static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        public static readonly ILogger Logger = Singleton<LogManager>.Instance;
 
         public delegate void ModsInjectionCompleteHandler(List<IExposedMod> exposedMods);
         public static event ModsInjectionCompleteHandler ModsInjectionComplete;
@@ -45,21 +71,28 @@ namespace VortexHarmonyInstaller
         private static string m_strDataPath;
         public static string CurrentDataPath { get { return m_strDataPath; } }
 
+        // Where we expect to find the mods.
+        private static string m_modsPath;
+        public static string CurrentModsPath { get { return m_modsPath; } }
+
         private static void OnModsInjectionComplete(List<IExposedMod> exposedMods)
         {
-            if (ModsInjectionComplete != null)
-            {
-                ModsInjectionComplete(exposedMods);
-            }
+            ModsInjectionComplete?.Invoke(exposedMods);
         }
 
-        public static void Patch()
+        public static IModType FindMod<T>(string id)
         {
-            // Set log file destination.
-            string strVortexAppdata = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Vortex");
-            log4net.GlobalContext.Properties["LogFilePath"] = Path.Combine(strVortexAppdata, Constants.HARMONY_LOG_FILENAME);
+            IModType[] mods = m_liMods.Where(mod => mod.GetType() == typeof(T)).ToArray();
+            IModType modEntry = mods.FirstOrDefault(mod => mod.GetModName() == id);
+            if (modEntry == null)
+                Logger.Info($"Unable to find mod entry: {id}");
 
-            // Look up the UnityEngine file
+            return modEntry;
+        }
+
+        public static void Patch(string modsPath)
+        {
+            m_modsPath = modsPath;
             string strCurrentDir = Directory.GetCurrentDirectory();
             string strUnityEngine = Directory.GetFiles(strCurrentDir, "*.dll", SearchOption.AllDirectories)
                 .Where(file => file.EndsWith(Constants.UNITY_ENGINE_LIB))
@@ -67,37 +100,74 @@ namespace VortexHarmonyInstaller
 
             if (null == strUnityEngine)
             {
-                // We can't use the logger at this point as it wasn't configured yet...
-                Console.WriteLine("Unable to find the game's managed datapath, please re-install the game");
+                Logger.Error("Unable to find the game's managed datapath, please re-install the game");
                 return;
             }
 
             m_strDataPath = Path.GetDirectoryName(strUnityEngine);
-
-            // Load log4net configuration
-            FileInfo logfile = new FileInfo(Path.Combine(CurrentDataPath, Constants.LOG_CONFIG));
-            log4net.Config.XmlConfigurator.Configure(logfile);
+            MissingAssemblyResolver resolver = new MissingAssemblyResolver(m_strDataPath);
 
             Logger.Info("===============");
             Logger.Info("Patcher started");
             string strAssemblyPath = Path.Combine(CurrentDataPath, Constants.INSTALLER_ASSEMBLY_NAME + ".dll");
             m_InstallerAssembly = AssemblyDefinition.ReadAssembly(strAssemblyPath);
 
-            HarmonyInstance harmony = HarmonyInstance.Create("com.blacktreegaming.harmonypatcher");
-            harmony.PatchAll();
-
-            string modsFolder = Path.Combine(CurrentDataPath, "VortexMods");
-
-            // All dll files within the VortexMods folder are considered mods.
-            FileInfo[] modLibFiles = new DirectoryInfo(modsFolder).GetFiles("*.dll", SearchOption.AllDirectories);
+            // All dll files within the provided mods folder are considered mod entries.
+            FileInfo[] modLibFiles = new DirectoryInfo(m_modsPath).GetFiles("*.dll", SearchOption.AllDirectories);
             ResolveModList(modLibFiles);
 
+            string expectedLoadOrderFileLocation = Path.Combine(m_modsPath, Constants.LOAD_ORDER_FILENAME);
+            if (File.Exists(expectedLoadOrderFileLocation))
+            {
+                Logger.Info("Sorting mod load order");
+                Queue<FileInfo> sorted = new Queue<FileInfo>();
+                string[] loadOrder = File.ReadAllLines(expectedLoadOrderFileLocation);
+                foreach (string orderEntry in loadOrder)
+                {
+                    if (orderEntry == string.Empty)
+                        continue;
+
+                    FileInfo modAssembly = modLibFiles.FirstOrDefault(file => file.Name == orderEntry);
+                    if (modAssembly != null)
+                    {
+                        sorted.Enqueue(modAssembly);
+                    }
+                    else
+                    {
+                        // We couldn't find the assembly for this orderEntry... Log this and continue.
+                        Logger.Warn($"Cannot find mod assembly for order entry: {orderEntry}");
+                        continue;
+                    }
+                }
+
+                // Check if we managed to sort all assemblies and queue any leftover mods.
+                if (modLibFiles.Length != sorted.Count)
+                {
+                    List<FileInfo> diff = modLibFiles.Where(modLib => !sorted.Any(assemblyName => assemblyName.Name == modLib.Name)).ToList();
+                    string missingEntries = string.Join(", ", diff.Select(entry => entry.Name).ToArray());
+                    Logger.Warn($"Load order did contain the following mods: {missingEntries}; - these will be queued at the end of the mod list");
+
+                    foreach (FileInfo file in diff)
+                        sorted.Enqueue(file);
+                }
+
+                string finalList = string.Join(", ", sorted.Select(entry => entry.Name).ToArray());
+                Logger.Debug($"Final list is: {finalList}");
+
+                modLibFiles = sorted.ToArray();
+                Logger.Info("Finished sorting");
+            }
+            else
+            {
+                Logger.Warn($"Load order file is missing, expected file location is: {expectedLoadOrderFileLocation}");
+            }
+
             Logger.Info("Starting to inject mods");
-            foreach (IModType mod in m_liMods)
+            foreach (var mod in m_liMods)
             {
                 try
                 {
-                    Logger.InfoFormat("Injecting mod: [{0}]", mod.GetModName());
+                    Logger.Info($"Injecting mod: {mod.GetModName()}");
                     mod.InjectPatches();
                 }
                 catch (Exception exc)
@@ -114,6 +184,28 @@ namespace VortexHarmonyInstaller
 
         public static void ResolveModList(FileInfo[] modFiles)
         {
+            // Certain mods may contain multiple dll files at the mod's root directory
+            //  when encountering such a scenario, we expect the mod author to specify
+            //  which assembly to use in the manifest file. The func will return true
+            //  if the mod is to be inserted into the mod list; false otherwise.
+            Func<FileInfo, IModType, bool> IsModAssembly = (dllFile, modType) =>
+            {
+                string modDir = dllFile.DirectoryName;
+                FileInfo[] assemblies = new DirectoryInfo(modDir).GetFiles("*.dll", SearchOption.TopDirectoryOnly);
+                if (assemblies.Length > 1)
+                {
+                    string targetAssembly = modType.GetModData().GetTargetAssemblyFileName();
+                    if (string.IsNullOrEmpty(targetAssembly))
+                        return false;
+
+                    return (targetAssembly.ToLower() == dllFile.Name.ToLower());
+                }
+                else
+                {
+                    return true;
+                }
+            };
+
             foreach (FileInfo dll in modFiles)
             {
                 var modType = IdentifyModType(dll.DirectoryName);
@@ -122,6 +214,9 @@ namespace VortexHarmonyInstaller
                     Logger.ErrorFormat("Unidentified modType {0}", dll.Name);
                     continue;
                 }
+
+                if (!IsModAssembly(dll, modType))
+                    continue;
 
                 // Attempt to run assembly conversions.
                 if (!modType.ConvertAssemblyReferences(dll.FullName))
@@ -138,19 +233,24 @@ namespace VortexHarmonyInstaller
         public static IModType IdentifyModType(string dllRoot)
         {
             var interfaceType = typeof(IModType);
-            var types = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(s => s.GetTypes())
+            var types = Assembly.GetExecutingAssembly().GetTypes()
                 .Where(p => interfaceType.IsAssignableFrom(p)
                     && p.FullName != "VortexHarmonyInstaller.IModType");
 
             UnityContainer container = new UnityContainer();
             foreach (Type type in types)
             {
-                container.RegisterType(typeof(IModType), type);
-                IModType modType = container.Resolve(type) as IModType;
-                if (modType.ParseModData(dllRoot))
+                try
                 {
-                    return modType;
+                    container.RegisterType(typeof(IModType), type);
+                    IModType modType = container.Resolve(type) as IModType;
+                    if (modType.ParseModData(dllRoot))
+                        return modType;
+                }
+                catch (Exception exc)
+                {
+                    Logger.Error("Unable to parse mod data", exc);
+                    continue;
                 }
             }
 

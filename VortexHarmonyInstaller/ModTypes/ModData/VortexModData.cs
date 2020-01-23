@@ -1,10 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 using VortexHarmonyInstaller.Util;
@@ -164,9 +159,20 @@ namespace VortexHarmonyInstaller.ModTypes
             set { m_strGameId = value; }
         }
 
+        public string AssemblyName
+        {
+            get { return m_strAssemblyName; }
+            set { m_strAssemblyName = value; }
+        }
+
         [JsonIgnore]
         public string ModPath {
             get { return Path.GetDirectoryName(m_strManifestPath); }
+        }
+
+        public string GetTargetAssemblyFileName()
+        {
+            return (string.IsNullOrEmpty(AssemblyName)) ? null : AssemblyName;
         }
 
         public bool ParseManifest(string strManifestPath)

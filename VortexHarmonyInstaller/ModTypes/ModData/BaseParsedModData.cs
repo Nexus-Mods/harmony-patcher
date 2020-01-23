@@ -1,14 +1,13 @@
-﻿using Mono.Cecil;
+﻿using Microsoft.Practices.Unity;
+
+using Mono.Cecil;
 using Mono.Cecil.Cil;
-using Mono.Cecil.Rocks;
 
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 
@@ -41,6 +40,22 @@ namespace VortexHarmonyInstaller.ModTypes
 
     internal partial class Util
     {
+        static public void TryDelete(string strFilePath)
+        {
+            if (!File.Exists(strFilePath))
+                return; // No file, no problems.
+
+            try
+            {
+                File.Delete(strFilePath);
+            }
+            catch (Exception e)
+            {
+                LoggerDelegates.LogError("Unable to delete file", e);
+                return;
+            }
+        }
+
         static public string Backup(string strFilePath)
         {
             if (!File.Exists(strFilePath))
@@ -303,18 +318,23 @@ namespace VortexHarmonyInstaller.ModTypes
         protected Assembly m_ModAssembly = null;
         public Assembly ModAssembly { get { return m_ModAssembly; } }
 
-        // Will hold parsed mod information from JSON files.
-        protected IParsedModData m_ModData = null;
-        internal IParsedModData ModData { get { return m_ModData; } }
-
-        protected static Unity.UnityContainer m_ModDataContainer = new Unity.UnityContainer();
-        internal static Unity.UnityContainer ModDataContainer { get { return m_ModDataContainer; } }
+        protected static UnityContainer m_ModDataContainer = new UnityContainer();
+        internal static UnityContainer ModDataContainer { get { return m_ModDataContainer; } }
 
         protected static List<IExposedMod> m_ExposedMods = new List<IExposedMod>();
         public static List<IExposedMod> ExposedMods { get { return m_ExposedMods; } }
 
+        // Will hold parsed mod information from JSON files.
+        protected IParsedModData m_ModData = null;
+        public IParsedModData ModData { get { return m_ModData; } }
+
         public BaseModType()
         {
+        }
+
+        public virtual IParsedModData GetModData()
+        {
+            return ModData;
         }
 
         protected void AddExposedMod(IExposedMod mod)

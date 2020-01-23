@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.UI;
 
 using VortexHarmonyInstaller.Delegates;
 
@@ -85,17 +86,6 @@ namespace VortexUnity
         public static bool Ctrl { get { return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl); } }
     }
 
-    // UMM GUI Style wrapper. Exposed primarily for UMM mods to use.
-    public static class UI
-    {
-        public static GUIStyle bold { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.H2]; } }
-        public static GUIStyle h1 { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.H1]; } }
-        public static GUIStyle h2 { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.H2]; } }
-        public static GUIStyle window { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.WINDOW]; } }
-        public static GUIStyle button { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.BUTTON]; } }
-        public static GUIStyle settings { get { return VortexUI.StyleDefs[Enums.EGUIStyleID.SETTINGS]; } }
-    }
-
     public struct SCursorStatus
     {
         public CursorLockMode LockState;
@@ -157,7 +147,8 @@ namespace VortexUnity
         private Resolution m_CurrentResolution;
 
         private static int m_iGlobalFontSize = 22;
-        public static int GlobalFontSize {
+        public static int GlobalFontSize
+        {
             get { return m_iGlobalFontSize; }
             set { m_iGlobalFontSize = value; }
         }
@@ -170,7 +161,8 @@ namespace VortexUnity
             string strFolder = VortexPatcher.CurrentDataPath;
             string strAssemlyPath = Path.Combine(strFolder, Constants.ASSEMBLY_NAME);
             m_UIAssembly = Assembly.LoadFile(strAssemlyPath);
-            m_UIAssetBundle = AssetBundle.LoadFromFile(Path.Combine(strFolder, m_strAssetPath, Constants.UI_BUNDLE_NAME));
+            string strBundleRelPath = Path.Combine(m_strAssetPath, Constants.UI_BUNDLE_NAME);
+            m_UIAssetBundle = AssetBundle.LoadFromFile(Path.Combine(strFolder, strBundleRelPath));
             if (null != m_UIAssetBundle)
                 m_liTextures = m_UIAssetBundle.LoadAllAssets<Texture2D>().ToList();
             else

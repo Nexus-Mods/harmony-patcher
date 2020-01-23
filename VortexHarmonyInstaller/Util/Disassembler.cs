@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Mono.Cecil;
+
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -14,20 +16,17 @@ namespace VortexHarmonyInstaller.Util
 
     public class Disassembler
     {
-        private static readonly Lazy<Assembly> CurrentAssembly = new Lazy<Assembly>(() =>
-        {
+        private static Assembly CurrentAssembly() {
             return MethodBase.GetCurrentMethod().DeclaringType.Assembly;
-        });
+        }
 
-        private static readonly Lazy<string> ExecutingAssemblyPath = new Lazy<string>(() =>
-        {
+        private static string ExecutingAssemblyPath() {
             return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        });
+        }
 
-        private static readonly Lazy<string[]> Resources = new Lazy<string[]>(() =>
-        {
-            return CurrentAssembly.Value.GetManifestResourceNames();
-        });
+        private static string[] Resources() {
+            return CurrentAssembly().GetManifestResourceNames();
+        }
 
         private const string m_strIldasmArguments = "/all /text \"{0}\"";
 
@@ -35,7 +34,7 @@ namespace VortexHarmonyInstaller.Util
         {
             get
             {
-                return Path.Combine(ExecutingAssemblyPath.Value, Constants.ILDASM_EXEC);
+                return Path.Combine(ExecutingAssemblyPath(), Constants.ILDASM_EXEC);
             }
         }
 
@@ -60,7 +59,7 @@ namespace VortexHarmonyInstaller.Util
             FileInfo fileInfoOutputFile = new FileInfo(fileName);
 
             using (FileStream streamToOutputFile = fileInfoOutputFile.OpenWrite())
-            using (Stream streamToResourceFile = CurrentAssembly.Value.GetManifestResourceStream(embeddedResourceName))
+            using (Stream streamToResourceFile = CurrentAssembly().GetManifestResourceStream(embeddedResourceName))
             {
                 const int size = 4096;
                 byte[] bytes = new byte[4096];
@@ -86,10 +85,10 @@ namespace VortexHarmonyInstaller.Util
                 ? Path.Combine(outFileName, fileNameInDll)
                 : outFileName;
 
-            string resourcePath = Resources.Value.Where(resource => resource.EndsWith(fileNameInDll, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            string resourcePath = Resources().Where(resource => resource.EndsWith(fileNameInDll, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
             if (resourcePath == null)
             {
-                throw new Exception(string.Format("Cannot find {0} in the embedded resources of {1}", fileNameInDll, CurrentAssembly.Value.FullName));
+                throw new Exception(string.Format("Cannot find {0} in the embedded resources of {1}", fileNameInDll, CurrentAssembly().FullName));
             }
             SaveFileFromEmbeddedResource(resourcePath, strOutFilePath);
         }
@@ -98,7 +97,7 @@ namespace VortexHarmonyInstaller.Util
         {
             if (!File.Exists(assemblyFilePath))
             {
-                throw new InvalidOperationException(string.Format("The file {0} does not exist!", assemblyFilePath));
+                throw new FileNotFoundException(assemblyFilePath);
             }
 
             string tempFileName = Path.GetTempFileName();
@@ -126,21 +125,40 @@ namespace VortexHarmonyInstaller.Util
             return tempFileName;
         }
 
-        public static string DisassembleFile(string strAssemblyFilePath)
+        public static string DisassembleFile(string assemblyFilePath, bool extractResources = false)
         {
-
-            string disassembledFile = GetDisassembledFile(strAssemblyFilePath);
-            try
+            if (extractResources)
             {
-                return File.ReadAllText(disassembledFile);
-            }
-            finally
-            {
-                if (File.Exists(disassembledFile))
+                // Will extract any embedded resource files we can find.
+                //  We don't care for decryption or any sort of file manipulation,
+                //  simply dumping the files next to the assembly will do.
+                AssemblyDefinition assDef = AssemblyDefinition.ReadAssembly(assemblyFilePath);
+                if (assDef.MainModule.HasResources)
                 {
-                    File.Delete(disassembledFile);
+                    EmbeddedResource[] resources = assDef.MainModule.Resources
+                        .Where(res => res.ResourceType == ResourceType.Embedded)
+                        .Select(res => res as EmbeddedResource)
+                        .ToArray();
+
+                    foreach (EmbeddedResource res in resources)
+                    {
+                        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(assemblyFilePath),
+                            res.Name), res.GetResourceData());
+                    }
                 }
+
+                // Let it go! let it go!
+                assDef.Dispose();
             }
+
+            string disassembledFile = GetDisassembledFile(assemblyFilePath);
+            string disassembledIL = File.ReadAllText(disassembledFile);
+            if (File.Exists(disassembledFile))
+            {
+                File.Delete(disassembledFile);
+            }
+
+            return disassembledIL;
         }
     }
 }
