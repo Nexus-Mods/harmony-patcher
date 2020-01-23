@@ -1,6 +1,7 @@
 .vs/
 *.suo
 *.pdb
+*.csproj.user
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
