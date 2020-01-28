@@ -66,15 +66,18 @@ const PATCHER_ERRORS = {
 //  -i -> Path to the libraries which the patcher is using.
 //
 //  -x -> Location where we're planning to store our mods.
-function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath) {
+function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, context) {
   let lastError;
-  const buildInGameUI = () => (remove) ? Promise.resolve() : buildVIGO(dataPath);
-  //return copyAssemblies(dataPath).then(() => debugMSBuild());
+  const managedDirPath = (path.extname(dataPath) !== '')
+    ? path.dirname(dataPath)
+    : dataPath;
+  const buildInGameUI = () => (remove) ? Promise.resolve() : buildVIGO(managedDirPath);
+  //return copyAssemblies(managedDirPath).then(() => debugMSBuild());
   return buildInGameUI().then(() => cleanAssemblies())
   .then(() => new Promise((resolve, reject) => {
     const wstream = fs.createWriteStream(LOG_FILE_PATH);
     let patcher;
-    modsPath = !!modsPath ? modsPath : path.join(dataPath, 'VortexMods');
+    modsPath = !!modsPath ? modsPath : path.join(managedDirPath, 'VortexMods');
     try {
       patcher = spawn(EXEC_PATH, ['-g', extensionPath,
                                   '-m', dataPath,
@@ -113,6 +116,9 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath) {
         : resolve();
     });
   }))
+  .catch(err => (!!context)
+    ? context.api.showErrorNotification('patch injector has reported issues', err)
+    : log('error', 'patch injector has reported issues', err));
   //.then(() => );
 }
 
@@ -159,7 +165,7 @@ function buildVIGO(dataPath) {
 function debugMSBuild() {
   const msbuildLocation = 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\MSBuild\\15.0\\bin\\msbuild.exe';
   const params = [
-    'D:\\Projects\\dawn\\node_modules\\harmony-patcher\\VortexUnity\\VortexUnityManager.csproj',
+    'D:\\Projects\\kek\\node_modules\\harmony-patcher\\VortexUnity\\VortexUnityManager.csproj',
     '/p:configuration=Release;TargetFrameworkVersion=v3.5',
   ]
 
