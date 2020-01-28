@@ -56,22 +56,22 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-  <Reference Include="0Harmony">
-    <HintPath>..\dist\0Harmony.dll</HintPath>
-    <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-  </Reference>
-  <Reference Include="VortexHarmonyInstaller">
-    <HintPath>..\dist\VortexHarmonyInstaller.dll</HintPath>
-    <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-  </Reference>
-  <Reference Include="Mono.Cecil">
-    <HintPath>..\dist\Mono.Cecil.dll</HintPath>
-    <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-  </Reference>
-  <Reference Include="Newtonsoft.Json">
-    <HintPath>..\dist\Newtonsoft.Json.dll</HintPath>
-    <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-  </Reference>
-</ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>..\dist\0Harmony.dll</HintPath>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </Reference>
+    <Reference Include="VortexHarmonyInstaller">
+      <HintPath>..\dist\VortexHarmonyInstaller.dll</HintPath>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </Reference>
+    <Reference Include="Mono.Cecil">
+      <HintPath>..\dist\Mono.Cecil.dll</HintPath>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\dist\Newtonsoft.Json.dll</HintPath>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </Reference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

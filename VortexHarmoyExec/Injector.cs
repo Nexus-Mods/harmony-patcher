@@ -4,7 +4,6 @@ using Mono.Cecil.Cil;
 using System;
 using System.IO;
 using System.Linq;
-using VortexHarmoyExec;
 using System.Diagnostics;
 using System.Net;
 
@@ -20,6 +19,7 @@ namespace VortexHarmonyExec
             FILE_OPERATION_ERROR = -4,
             UNHANDLED_FILE_VERSION = -5,
             FAILED_DOWNLOAD = -6,
+            MISSING_ASSEMBLY_REF = -7,
             UNKNOWN = -13,
         }
 
@@ -357,7 +357,7 @@ namespace VortexHarmonyExec
                 if (!File.Exists(m_strGameAssemblyPath))
                     throw new FileNotFoundException($"{m_strGameAssemblyPath} does not exist");
 
-                m_bInjectGUI = m_strGameAssemblyPath.EndsWith(Constants.UNITY_ASSEMBLY_LIB);
+                m_bInjectGUI = VortexHarmonyManager.InjectVIGO;
                 if (m_bInjectGUI)
                 {
                     Array.Resize(ref _LIB_FILES, _LIB_FILES.Length + 1);

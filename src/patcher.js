@@ -7,6 +7,7 @@ const { app, remote } = require('electron');
 const Promise = require('bluebird');
 const msbuildLib = require('msbuild');
 const { actions, fs, DraggableList, FlexLayout, log, MainPage, selectors, util } = require('vortex-api');
+const semver = require('semver');
 
 const uniApp = app || remote.app;
 
@@ -17,9 +18,13 @@ const EXEC_PATH = path.join(MODULE_PATH, PATCHER_EXEC);
 
 const LOAD_ORDER_FILE = 'load_order.txt';
 
+const FRAMEWORK_VER_PREFIX = 'FrameworkVersion=';
+
 const VIGO_ASSEMBLY = 'VortexUnity.dll';
 const VIGO_DIR = path.resolve(MODULE_PATH, '..', 'VortexUnity');
 const VIGO_PROJ = path.join(VIGO_DIR, 'VortexUnityManager.csproj');
+
+let _BUILD_VER;
 
 // A list of Unity Assemblies required to build
 //  VIGO - if we can't find any of these inside the
@@ -66,14 +71,34 @@ const PATCHER_ERRORS = {
 //  -i -> Path to the libraries which the patcher is using.
 //
 //  -x -> Location where we're planning to store our mods.
-function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, context) {
+//
+//  -v -> Decides whether VIGO should be built or not.
+function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, context, injectVIGO) {
   let lastError;
-  const managedDirPath = (path.extname(dataPath) !== '')
+  const managedDirPath = (path.extname(dataPath) === '.dll')
     ? path.dirname(dataPath)
     : dataPath;
-  const buildInGameUI = () => (remove) ? Promise.resolve() : buildVIGO(managedDirPath);
-  //return copyAssemblies(managedDirPath).then(() => debugMSBuild());
-  return buildInGameUI().then(() => cleanAssemblies())
+
+  const buildInGameUI = () => (remove || !injectVIGO)
+    ? Promise.resolve()
+    : queryNETVersion(dataPath).then(version => buildVIGO(managedDirPath, version));
+
+  // MSBuild debug function - do not remove.
+  // return copyAssemblies(managedDirPath)
+  //   .then(() => queryNETVersion(dataPath))
+  //   .then(version => debugMSBuild(version));
+
+  return buildInGameUI()
+    .then(() => cleanAssemblies())
+    .catch(err => {
+      // VIGO failed the build; by default VIGO is optional
+      //  and the harmony patcher should still be able to work
+      //  correctly so we log this and continue.
+      (!!context)
+        ? context.api.showErrorNotification('VIGO failed to build', err)
+        : log('error', 'patch injector has reported issues', err);
+      return cleanAssemblies();
+    })
   .then(() => new Promise((resolve, reject) => {
     const wstream = fs.createWriteStream(LOG_FILE_PATH);
     let patcher;
@@ -84,7 +109,8 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, conte
                                   '-e', entryPoint,
                                   '-i', MODULE_PATH,
                                   '-x', modsPath,
-                                  !!remove ? '-r' : '']);
+                                  !!remove ? '-r' : '',
+                                  !!injectVIGO ? '-v' : '']);
     } catch (err) {
       return reject(err);
     }
@@ -122,6 +148,53 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, conte
   //.then(() => );
 }
 
+function getTargetFramework(version) {
+  const coercedVersion = semver.coerce(version);
+  return (semver.valid(coercedVersion))
+    ? (coercedVersion.major > 3)
+      ? `v${coercedVersion.major}.${coercedVersion.minor}`
+      : 'v3.5'
+    : 'v3.5';
+}
+
+function queryNETVersion(dataPath) {
+  let lastError;
+  let version;
+  return new Promise((resolve, reject) => {
+    let patcher;
+    try {
+      patcher = spawn(EXEC_PATH, ['-q', dataPath]);
+    } catch (err) {
+      return reject(err);
+    }
+
+    patcher.stdout.on('data', data => {
+      const formatted = data.toString().split('\n');
+      version = (version === undefined)
+        ? formatted.find(line => line.indexOf(FRAMEWORK_VER_PREFIX) !== -1)
+        : version;
+    });
+
+    patcher.stderr.on('data', data => {
+      const formatted = data.toString().split('\n').filter(line => !!line);
+      lastError = parseErrorData(formatted);
+      return reject(createError(code, lastError));
+    });
+
+    patcher.on('error', err => {
+      return reject(err);
+    });
+
+    patcher.on('close', code => {
+      return (code !== 0)
+        ? reject(createError(code, lastError))
+        : resolve(version);
+    });
+  }).then(version => (version !== undefined)
+    ? version.substring(FRAMEWORK_VER_PREFIX.length)
+    : '3.5.0.0');
+}
+
 function cleanAssemblies() {
   const logAndContinue = (err) => {
     log('error', 'unable to remove assembly', err);
@@ -146,27 +219,33 @@ function copyAssemblies(dataPath) {
   })
 }
 
-function buildVIGO(dataPath) {
-  return new Promise((resolve, reject) =>
-    fs.statAsync(path.join(dataPath, VIGO_ASSEMBLY))
-      .then(() => reject(new Error('File exists')))
-      .catch(err => err.code !== 'ENOENT'
-        ? reject(err)
-        : copyAssemblies(dataPath))
-  .then(() => restore(() => build(() => resolve()))))
-  .catch(err => err.message === 'File exists'
-    ? Promise.resolve()
-    : createError('-13', err));
+function buildVIGO(dataPath, version) {
+  _BUILD_VER = getTargetFramework(version);
+  const startBuild = () => new Promise((resolve, reject) =>
+    copyAssemblies(dataPath)
+      .then(() => restore(() => build(() => resolve())))
+      .catch(err => reject(err)));
+
+  return fs.statAsync(path.join(dataPath, VIGO_ASSEMBLY))
+    .then(() => Promise.resolve())
+    .catch(err => (err.code === 'ENOENT') ? startBuild() : Promise.reject(err));
 }
 
 // The msbuild module we use to build our projects does not
 //  provide enough information when a build fails; this function
 //  can be used through Vortex to debug any build failures.
-function debugMSBuild() {
+//0: "D:\Projects\kek\node_modules\harmony-patcher\VortexUnity\VortexUnityManager.csproj"
+//1: "/p:configuration=Release;TargetFrameworkVersion=v4.0"
+//2: "/verbosity:quiet"
+//3: "/clp:ErrorsOnly"
+function debugMSBuild(version) {
+  const netBuildVer = getTargetFramework(version);
   const msbuildLocation = 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\MSBuild\\15.0\\bin\\msbuild.exe';
   const params = [
     'D:\\Projects\\kek\\node_modules\\harmony-patcher\\VortexUnity\\VortexUnityManager.csproj',
-    '/p:configuration=Release;TargetFrameworkVersion=v3.5',
+    `/p:configuration=Release;TargetFrameworkVersion=${netBuildVer}`,
+    '/verbosity:quiet',
+    '/clp:ErrorsOnly',
   ]
 
   const debug = spawn(msbuildLocation, params);
@@ -196,7 +275,7 @@ function debugMSBuild() {
 function build(cb) {
   var msbuild = new msbuildLib(cb);
   msbuild.sourcePath = VIGO_PROJ;
-  msbuild.configuration = 'Release;TargetFrameworkVersion=v3.5';
+  msbuild.configuration = `Release;TargetFrameworkVersion=${_BUILD_VER}`;
   msbuild.overrideParams.push('/verbosity:quiet');
   msbuild.overrideParams.push('/clp:ErrorsOnly');
   msbuild.build();
@@ -205,7 +284,7 @@ function build(cb) {
 function restore(cb) {
   var msbuild = new msbuildLib(cb);
   msbuild.sourcePath = VIGO_DIR;
-  msbuild.configuration = 'Release;TargetFrameworkVersion=v3.5';
+  msbuild.configuration = `Release;TargetFrameworkVersion=${_BUILD_VER}`;
   msbuild.overrideParams.push('/t:restore');
   msbuild.overrideParams.push('/verbosity:quiet');
   msbuild.overrideParams.push('/clp:ErrorsOnly');
@@ -327,7 +406,7 @@ function getDiscoveryPath(state, gameId) {
 
 function parseErrorData(data) {
   const errorData = (Array.isArray(data))
-    ? `{ "errors": ${data.toString()} }` : data;
+    ? `{ "errors": [${data.toString()}]}` : data;
   try {
     const error = JSON.parse(errorData);
     return error;

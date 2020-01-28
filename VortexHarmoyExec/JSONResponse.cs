@@ -2,8 +2,7 @@
 
 using Newtonsoft.Json;
 
-using VortexHarmonyExec;
-namespace VortexHarmoyExec
+namespace VortexHarmonyExec
 {
     public class JSONResponse
     {
