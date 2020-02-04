@@ -15,6 +15,46 @@ namespace VortexHarmonyExec
         public const string VORTEX_GUI_LIB = "VortexUnity.dll";
     }
 
+    internal partial class Util
+    {
+        /// <summary>
+        /// Given an absolute path to an assembly, this function will load the assembly
+        ///  and attempt to find a referenced assembly name.
+        /// </summary>
+        /// <param name="absPath">The absolute path to the assembly we wish to load</param>
+        /// <param name="assemblyName">The name of the assembly reference we want to check (Not the FullName)</param>
+        /// <returns>An assembly name if we managed to find the reference - null if we couldn't find the ref</returns>
+        internal static AssemblyName FindAssemblyRef(string absPath, string assemblyName)
+        {
+            if (!File.Exists(absPath))
+            {
+                string error = JSONResponse.CreateSerializedResponse("Couldn't find game assembly", Enums.EErrorCode.MISSING_FILE);
+                Console.Error.WriteLine(error);
+                return null;
+            }
+
+            Assembly gameAssembly = null;
+            try { gameAssembly = Assembly.ReflectionOnlyLoadFrom(absPath); }
+            catch (Exception exc)
+            {
+                string error = JSONResponse.CreateSerializedResponse("Unable to load game assembly", Enums.EErrorCode.UNKNOWN, exc);
+                Console.Error.WriteLine(error);
+                return null;
+            }
+
+            AssemblyName[] references = gameAssembly.GetReferencedAssemblies();
+            AssemblyName assemblyRef = references.Where(reference => reference.Name == assemblyName).FirstOrDefault();
+            if (assemblyRef == null)
+            {
+                string error = JSONResponse.CreateSerializedResponse($"Assembly does not contain {assemblyName} as a reference", Enums.EErrorCode.MISSING_ASSEMBLY_REF);
+                Console.Error.WriteLine(error);
+                return null;
+            }
+
+            return assemblyRef;
+        }
+    }
+
     class VortexHarmonyManager
     {
         private static Injector m_injector;
@@ -54,11 +94,19 @@ namespace VortexHarmonyExec
             bool removePatch = false;
             bool showHelp = false;
 
-            // Highlights that we do not wish to patch the game assembly
-            //  but query the .NET version instead. This is currently used
-            //  by Vortex to ascertain which .NET version we want to use when
+            // (The -q argument should be used on its own as all other arguments will be ignored)
+            //  string will hold the path to the assembly we want to check for the .NET version.
+            //  if an absolute path is not provided, Vortex will assume that we're looking for Unity's
+            //  default assembly (Assembly-CSharp.dll)
+            //  This is currently used by Vortex to ascertain which .NET version we want to use when
             //  building VIGO.
             string queryNETAssembly = string.Empty;
+
+            // (This -a should be used on its own as all other arguments will be ignored)
+            //  string will hold both the path to the assembly we want to load and the
+            //  assembly name reference we want to verify. Value should have the following
+            //  format: "{Assembly_Path}::{Assembly_Name}" e.g. "C:/somePath/assembly.dll::mscorlib"
+            string queryAssemblyName = string.Empty;
 
             OptionSet options = new OptionSet()
                 .Add("h", "Shows this message and closes program", h => showHelp = h != null)
@@ -68,8 +116,9 @@ namespace VortexHarmonyExec
                 .Add("e|entry=", "This game's entry point formatted as: 'Namespace.ClassName::MethodName'", e => m_entryPoint = e)
                 .Add("x|modsfolder=", "The game's expected mods directory", x => m_modsfolder = x)
                 .Add("r", "Will remove the harmony patcher", r => removePatch = r != null)
-                .Add("q|querynet=", "Query the .NET version of the assembly file we attempt to patch", q => queryNETAssembly = q)
-                .Add("v", "Used to decide whether we want to use VIGO or not", v => m_injectVIGO = v != null);
+                .Add("q|querynet=", "(optional) Query the .NET version of the assembly file we attempt to patch", q => queryNETAssembly = q)
+                .Add("v", "(optional) Used to decide whether we want to use VIGO or not", v => m_injectVIGO = v != null)
+                .Add("a|queryassemblyname=", "(optional) Used to check assembly references. Expected format: 'Assembly_Path::Assembly_Name'" , a => queryAssemblyName = a);
 
             List<string> extra;
             try
@@ -81,17 +130,70 @@ namespace VortexHarmonyExec
                 showHelp = true;
             }
 
-            if (!string.IsNullOrEmpty(queryNETAssembly))
+            if (showHelp || (args.Length == 0))
             {
-                // This is a query operation, as mentioned above
-                //  we're not going to patch the game assembly.
-                QueryNETVersion(queryNETAssembly);
+                ShowHelp(options);
                 return;
             }
 
-            if (showHelp || (args.Length < options.Count - 1))
+            if (!string.IsNullOrEmpty(queryNETAssembly))
             {
-                ShowHelp(options);
+                const string FRAMEWORK_PREFIX = "FrameworkVersion=";
+                bool bFoundVersion = false;
+                string assemblyFile = (queryNETAssembly.EndsWith(".dll"))
+                    ? queryNETAssembly : Path.Combine(queryNETAssembly, Constants.UNITY_ASSEMBLY_LIB);
+
+                AssemblyName assemblyName = Util.FindAssemblyRef(assemblyFile, "mscorlib");
+                if (assemblyName != null)
+                {
+                    // Found a reference
+                    Console.WriteLine($"{FRAMEWORK_PREFIX}{assemblyName.Version.ToString()}");
+                    bFoundVersion = true;
+                }
+
+                // We couldn't find a NET reference - lets see if there's a mscorlib assembly
+                //  next to the game assembly.
+                string potentialMscorlibFilePath = Path.Combine(Path.GetDirectoryName(assemblyFile), "mscorlib.dll");
+                if (!bFoundVersion && File.Exists(potentialMscorlibFilePath))
+                {
+                    string version = System.Diagnostics.FileVersionInfo.GetVersionInfo(potentialMscorlibFilePath).FileVersion;
+                    Console.WriteLine($"{FRAMEWORK_PREFIX}{version}");
+                    bFoundVersion = true;
+                }
+
+                if (!bFoundVersion)
+                {
+                    // We will have to rely on the assembly's runtime version.
+                    Assembly gameAss = Assembly.ReflectionOnlyLoadFrom(assemblyFile);
+                    Console.WriteLine($"{FRAMEWORK_PREFIX}{gameAss.ImageRuntimeVersion}");
+                }
+
+                // This is a query operation, as mentioned above
+                //  we're not going to patch the game assembly.
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(queryAssemblyName))
+            {
+                string[] parsed = queryAssemblyName.Split(new string[] { "::" }, StringSplitOptions.None);
+                if (parsed.Length != 2)
+                {
+                    string strError = JSONResponse.CreateSerializedResponse("Invalid value, please respect format: 'Assembly_Path::Ref_Assembly_Name'", Enums.EErrorCode.INVALID_ARGUMENT);
+                    Console.Error.WriteLine(strError);
+                    return;
+                }
+
+                string assemblyFile = (parsed[0].EndsWith(".dll"))
+                    ? parsed[0] : Path.Combine(parsed[0], Constants.UNITY_ASSEMBLY_LIB);
+
+                AssemblyName assemblyName = Util.FindAssemblyRef(assemblyFile, parsed[1]);
+                if (assemblyName != null)
+                {
+                    Console.WriteLine($"FoundAssembly={assemblyName.FullName}");
+                }
+
+                // This is a query operation, as mentioned above
+                //  we're not going to patch the game assembly.
                 return;
             }
 
@@ -111,39 +213,6 @@ namespace VortexHarmonyExec
             Console.WriteLine();
             Console.WriteLine("Options:");
             options.WriteOptionDescriptions(Console.Out);
-        }
-
-        private static void QueryNETVersion(string dataPath)
-        {
-            string assemblyFile = (dataPath.EndsWith(".dll"))
-                ? dataPath : Path.Combine(dataPath, Constants.UNITY_ASSEMBLY_LIB);
-
-            if (!File.Exists(assemblyFile))
-            {
-                string error = JSONResponse.CreateSerializedResponse("Couldn't find game assembly", Enums.EErrorCode.MISSING_FILE);
-                Console.Error.WriteLine(error);
-                return;
-            }
-
-            Assembly gameAssembly = null;
-            try { gameAssembly = Assembly.ReflectionOnlyLoadFrom(assemblyFile); }
-            catch (Exception exc)
-            {
-                string error = JSONResponse.CreateSerializedResponse("Unable to load game assembly", Enums.EErrorCode.UNKNOWN, exc);
-                Console.Error.WriteLine(error);
-                return;
-            }
-
-            AssemblyName[] references = gameAssembly.GetReferencedAssemblies();
-            AssemblyName corlib = references.Where(reference => reference.Name == "mscorlib").FirstOrDefault();
-            if (corlib == null)
-            {
-                string error = JSONResponse.CreateSerializedResponse("Assembly does not contain mscorlib reference", Enums.EErrorCode.MISSING_ASSEMBLY_REF);
-                Console.Error.WriteLine(error);
-                return;
-            }
-
-            Console.WriteLine($"FrameworkVersion={corlib.Version.ToString()}");
         }
 
         private static void Run(bool bRemove)

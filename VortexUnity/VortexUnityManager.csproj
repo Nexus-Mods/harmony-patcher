@@ -61,6 +61,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\dist\VortexHarmonyInstaller.dll</HintPath>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>

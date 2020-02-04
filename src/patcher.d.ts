@@ -6,7 +6,10 @@ export declare function runPatcher(
   dataPath: string,
   entryPoint: string,
   remove: boolean,
-  modsPath: string): Promise<void>;
+  modsPath: string,
+  context?: types.IExtensionContext,
+  injectVIGO?: boolean,
+  unityEngineDir?: string): Promise<void>;
 
 export declare function initHarmonyUI(
   context: types.IExtensionContext,
@@ -16,3 +19,9 @@ export declare function initHarmonyUI(
   modsPath: string,
   gameId: string,
   onErrorCB: () => void): void;
+
+export declare function raiseConsentNotification(
+  context: types.IExtensionContext,
+  gameId: string,
+  isMerged: boolean,
+): Promise<void>;

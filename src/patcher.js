@@ -19,10 +19,13 @@ const EXEC_PATH = path.join(MODULE_PATH, PATCHER_EXEC);
 const LOAD_ORDER_FILE = 'load_order.txt';
 
 const FRAMEWORK_VER_PREFIX = 'FrameworkVersion=';
+const ASSEMBLY_REF_QUERY_PREFIX = 'FoundAssembly=';
 
 const VIGO_ASSEMBLY = 'VortexUnity.dll';
 const VIGO_DIR = path.resolve(MODULE_PATH, '..', 'VortexUnity');
 const VIGO_PROJ = path.join(VIGO_DIR, 'VortexUnityManager.csproj');
+
+const NAMESPACE = 'harmony-patcher';
 
 let _BUILD_VER;
 
@@ -53,6 +56,7 @@ const PATCHER_ERRORS = {
   '-4' : 'File operation failed',
   '-5' : 'Encountered unhandled assembly version',
   '-6' : 'Essential download has failed',
+  '-7' : 'Assembly reference lookup failed',
   '-13' : `Unknown error - please include your "${LOG_FILE_PATH}" file when reporting this error`,
 };
 
@@ -73,21 +77,31 @@ const PATCHER_ERRORS = {
 //  -x -> Location where we're planning to store our mods.
 //
 //  -v -> Decides whether VIGO should be built or not.
-function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, context, injectVIGO) {
+function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, context, injectVIGO, unityEngineDir) {
   let lastError;
-  const managedDirPath = (path.extname(dataPath) === '.dll')
-    ? path.dirname(dataPath)
-    : dataPath;
 
+  // The assembly path may sometimes differ from the location of the
+  //  UnityEngine assemblies. We need these to build VIGO, so in these
+  //  circumstances unityEngineDir should be populated with the absolute
+  //  path to the directory where the Unity assemblies are located.
+  const managedDirPath = (unityEngineDir !== undefined)
+    ? unityEngineDir
+    : (path.extname(dataPath) === '.dll')
+      ? path.dirname(dataPath)
+      : dataPath;
+
+  // Runs the VIGO build functionality.
   const buildInGameUI = () => (remove || !injectVIGO)
     ? Promise.resolve()
-    : queryNETVersion(dataPath).then(version => buildVIGO(managedDirPath, version));
+    : queryNETVersion(managedDirPath)
+        .then(version => buildVIGO(managedDirPath, version));
 
   // MSBuild debug function - do not remove.
   // return copyAssemblies(managedDirPath)
   //   .then(() => queryNETVersion(dataPath))
   //   .then(version => debugMSBuild(version));
 
+  const isMerged = (unityEngineDir !== undefined) ? true : false;
   return buildInGameUI()
     .then(() => cleanAssemblies())
     .catch(err => {
@@ -103,6 +117,15 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, conte
     const wstream = fs.createWriteStream(LOG_FILE_PATH);
     let patcher;
     modsPath = !!modsPath ? modsPath : path.join(managedDirPath, 'VortexMods');
+
+    // Given the new merging functionality, the assembly we wish to patch
+    //  may be located inside the __merged mod directory which will not contain
+    //  the mscorlib assembly alongside it; this will block the injector from
+    //  re-enabling reflection when needed. The injector _must_ be aware of the
+    //  location of the mscorlib assembly which sits alongside the UnityEngine.
+    //  We modify the dataPath to include the expected location of the mscorlib assembly;
+    //  the injector will decipher this.
+    dataPath = (unityEngineDir !== undefined)  ? `${dataPath}::${unityEngineDir}` : dataPath;
     try {
       patcher = spawn(EXEC_PATH, ['-g', extensionPath,
                                   '-m', dataPath,
@@ -157,42 +180,62 @@ function getTargetFramework(version) {
     : 'v3.5';
 }
 
-function queryNETVersion(dataPath) {
+function injectorQuery(dataPath, pattern, assemblyName = undefined) {
+  const wstream = fs.createWriteStream(LOG_FILE_PATH);
   let lastError;
-  let version;
+  let match;
+  const args = (assemblyName === undefined)
+    ? ['-q', dataPath]
+    : ['-a', dataPath + '::' + assemblyName];
   return new Promise((resolve, reject) => {
     let patcher;
     try {
-      patcher = spawn(EXEC_PATH, ['-q', dataPath]);
+      patcher = spawn(EXEC_PATH, args);
     } catch (err) {
       return reject(err);
     }
 
     patcher.stdout.on('data', data => {
       const formatted = data.toString().split('\n');
-      version = (version === undefined)
-        ? formatted.find(line => line.indexOf(FRAMEWORK_VER_PREFIX) !== -1)
-        : version;
+      formatted.forEach(line => {
+        wstream.write(line + '\n');
+      });
+      match = (match === undefined)
+        ? formatted.find(line => line.indexOf(pattern) !== -1)
+        : match;
     });
 
     patcher.stderr.on('data', data => {
       const formatted = data.toString().split('\n').filter(line => !!line);
       lastError = parseErrorData(formatted);
-      return reject(createError(code, lastError));
+      formatted.forEach(line => {
+        wstream.write(line + '\n');
+      });
     });
 
     patcher.on('error', err => {
+      wstream.close();
       return reject(err);
     });
 
     patcher.on('close', code => {
+      wstream.close();
       return (code !== 0)
         ? reject(createError(code, lastError))
-        : resolve(version);
+        : resolve(match);
     });
-  }).then(version => (version !== undefined)
-    ? version.substring(FRAMEWORK_VER_PREFIX.length)
-    : '3.5.0.0');
+  }).then(match => (match !== undefined)
+    ? match.substring(pattern.length)
+    : undefined);
+}
+
+function queryAssemblyReference(dataPath, assemblyName) {
+  return injectorQuery(dataPath, ASSEMBLY_REF_QUERY_PREFIX, assemblyName);
+}
+
+function queryNETVersion(dataPath) {
+  return injectorQuery(dataPath, FRAMEWORK_VER_PREFIX)
+    .then(version => (version !== undefined) ? version : '3.5.0.0');
 }
 
 function cleanAssemblies() {
@@ -226,18 +269,14 @@ function buildVIGO(dataPath, version) {
       .then(() => restore(() => build(() => resolve())))
       .catch(err => reject(err)));
 
-  return fs.statAsync(path.join(dataPath, VIGO_ASSEMBLY))
-    .then(() => Promise.resolve())
+  return fs.lstatAsync(path.join(dataPath, VIGO_ASSEMBLY))
+    .then((stats) => Promise.resolve())
     .catch(err => (err.code === 'ENOENT') ? startBuild() : Promise.reject(err));
 }
 
 // The msbuild module we use to build our projects does not
 //  provide enough information when a build fails; this function
 //  can be used through Vortex to debug any build failures.
-//0: "D:\Projects\kek\node_modules\harmony-patcher\VortexUnity\VortexUnityManager.csproj"
-//1: "/p:configuration=Release;TargetFrameworkVersion=v4.0"
-//2: "/verbosity:quiet"
-//3: "/clp:ErrorsOnly"
 function debugMSBuild(version) {
   const netBuildVer = getTargetFramework(version);
   const msbuildLocation = 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\MSBuild\\15.0\\bin\\msbuild.exe';
@@ -289,6 +328,46 @@ function restore(cb) {
   msbuild.overrideParams.push('/verbosity:quiet');
   msbuild.overrideParams.push('/clp:ErrorsOnly');
   msbuild.build();
+}
+
+function raiseConsentNotification(context, gameId, isMerged) {
+  const notifId = `${gameId}-patch-consent`;
+  const api = context.api;
+  const t = (text, i18Options) => api.translate(text, i18Options);
+  const howToRemovePatchText = (isMerged)
+    ? t('clicking the "Purge Mods" button.')
+    : t('clicking the "Patcher-Remove" button.');
+
+  api.sendNotification({
+    noDismiss: true,
+    allowSuppress: true,
+    id: notifId,
+    type: 'critical',
+    message: t('Game assembly patching is required',
+      { ns: NAMESPACE }),
+      actions: [
+        { title: 'More', action: () => consentDialog() },
+      ],
+  });
+
+  const consentDialog = () => new Promise((resolve, reject) => {
+    return api.showDialog('question', 'Harmony Patcher', {
+      bbcode: t('{{gameId}} is designed to use Vortex\'s '
+            + 'game assembly patching implementation; what this means is - '
+            + 'Vortex will inject code into your game\'s assembly which aims to execute '
+            + 'our mod loader.<br /><br />'
+            + 'This is easily reversible by {{how}}',
+            { replace: { how: howToRemovePatchText, gameId }, ns: NAMESPACE }),
+    },
+    [
+      { label: 'Ok', action: () => {
+        api.dismissNotification(notifId);
+        api.suppressNotification(notifId, true);
+        return resolve();
+      }},
+      { label: 'Cancel', action: () => reject(new util.UserCanceled()) },
+    ]);
+  });
 }
 
 // Aimed at creating the default UI settings for a gameId.
@@ -362,7 +441,9 @@ function createError(errorCode, lastError) {
   if (lastError !== undefined) {
     let err;
     if (!!lastError.errors) {
-      err = lastError.errors.map(errInstance => createErrorMessage(errInstance)).join('\n');
+      err = lastError.errors
+        .filter(errInstance => errInstance.ErrorCode !== 0)
+        .map(errInstance => createErrorMessage(errInstance)).join('\n');
     } else {
       err = createErrorMessage(lastError);
     }
@@ -576,4 +657,5 @@ const LoadOrder = connect(mapStateToProps, mapDispatchToProps)(LoadOrderBase);
 module.exports = {
   runPatcher,
   initHarmonyUI,
+  raiseConsentNotification,
 };
