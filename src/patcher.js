@@ -1,12 +1,9 @@
 const { spawn } = require('child_process');
-const React = require('react');
-const BS = require('react-bootstrap');
-const { connect } = require('react-redux');
 const path = require('path');
 const { app, remote } = require('electron');
 const Promise = require('bluebird');
 const msbuildLib = require('msbuild');
-const { actions, fs, DraggableList, FlexLayout, log, MainPage, selectors, util } = require('vortex-api');
+const { fs, log, selectors, util } = require('vortex-api');
 const semver = require('semver');
 
 const uniApp = app || remote.app;
@@ -168,7 +165,34 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, conte
   .catch(err => (!!context)
     ? context.api.showErrorNotification('patch injector has reported issues', err)
     : log('error', 'patch injector has reported issues', err));
-  //.then(() => );
+}
+
+function addLoadOrderPage(context, gameId, loadOrderInfo, gameArtURL, preSort, filter, callback) {
+  context.registerLoadOrderPage({
+    gameId,
+    loadOrderInfo,
+    gameArtURL,
+    preSort: (items) => {
+      if (!!preSort && typeof(preSort) === "function") {
+        return preSort(items);
+      }
+      return Promise.resolve(items);
+    },
+    filter: (mods) => {
+      if (!!filter && typeof(filter) === "function") {
+        // Forward the new load order to the game extension's callback.
+        return filter(mods).filter(mod => mod.type !== 'harmonypatchermod');
+      }
+      return mods.filter(mod => mod.type !== 'harmonypatchermod');
+    },
+    callback: (loadOrder) => {
+      if (!!callback && typeof(callback) === "function") {
+        // Forward the new load order to the game extension's callback.
+        callback(loadOrder);
+      }
+      saveLoadOrder(context, gameId, loadOrder)
+    }
+  })
 }
 
 function getTargetFramework(version) {
@@ -370,65 +394,6 @@ function raiseConsentNotification(context, gameId, isMerged) {
   });
 }
 
-// Aimed at creating the default UI settings for a gameId.
-//  1. Will register the "Patcher - Add/Remove" buttons.
-//  2. Will register the load order page.
-function initHarmonyUI(context, extensionPath, dataPath, entryPoint, modsPath, gameId, onErrorCB) {
-  // Register the remove action button.
-  context.registerAction('mod-icons', 500, 'savegame', {}, 'Patcher - Remove', () => {
-    const store = context.api.store;
-    const state = store.getState();
-    const gameMode = selectors.activeGameId(state);
-    if ((gameMode !== gameId) || !canPatch(context)) {
-      return false;
-    }
-
-    const discoveryPath = getDiscoveryPath(state, gameId);
-    const moddingPath = path.join(discoveryPath, modsPath);
-    const absDataPath = path.join(discoveryPath, dataPath);
-    runPatcher(extensionPath, absDataPath, entryPoint, true, moddingPath)
-      .catch(err => onErrorCB(err));
-    return true;
-  }, () => {
-    const state = context.api.store.getState();
-    const gameMode = selectors.activeGameId(state);
-    return (gameMode === gameId)
-  });
-
-  // Register the add action button.
-  context.registerAction('mod-icons', 500, 'savegame', {}, 'Patcher - Add', () => {
-    const store = context.api.store;
-    const state = store.getState();
-    const gameMode = selectors.activeGameId(state);
-    if ((gameMode !== gameId) || !canPatch(context)) {
-      return false;
-    }
-
-    const discoveryPath = getDiscoveryPath(state, gameId);
-    const moddingPath = path.join(discoveryPath, modsPath);
-    const absDataPath = path.join(discoveryPath, dataPath);
-    runPatcher(extensionPath, absDataPath, entryPoint, false, moddingPath)
-      .catch(err => onErrorCB(err));
-    return true;
-  }, () => {
-    const state = context.api.store.getState();
-    const gameMode = selectors.activeGameId(state);
-    return (gameMode === gameId)
-  });
-
-  context.registerMainPage('sort-none', 'Load Order', LoadOrder, {
-    id: 'harmony-load-order',
-    hotkey: 'E',
-    group: 'per-game',
-    visible: () => selectors.activeGameId(context.api.store.getState()) === gameId,
-    props: () => ({
-      t: context.api.translate,
-      extensionPath,
-      moddingPath: path.join(getDiscoveryPath(context.api.store.getState(), gameId), modsPath),
-    }),
-  });
-}
-
 function createError(errorCode, lastError) {
   const createErrorMessage = (error) => {
     return (!!error.RaisedException)
@@ -456,35 +421,6 @@ function createError(errorCode, lastError) {
   }
 }
 
-// Check list:
-//  1. Ensure Vortex is not running any tools.
-function canPatch(context) {
-  let patch = true;
-  const store = context.api.store;
-  const state = store.getState();
-  const running = util.getSafe(state, ['session', 'base', 'toolsRunning'], {});
-  if (Object.keys(running).length > 0) {
-    context.api.sendNotification({
-      type: 'info',
-      message: 'Can\'t run harmony patcher while a tool/game is running',
-      displayMS: 5000,
-    });
-    patch = false;
-  }
-
-  return patch;
-}
-
-function getDiscoveryPath(state, gameId) {
-  const discovery = util.getSafe(state, ['settings', 'gameMode', 'discovered', gameId], undefined);
-  if ((discovery === undefined) || (discovery.path === undefined)) {
-    log('error', 'Game is not discovered', gameId);
-    return undefined;
-  }
-
-  return discovery.path;
-}
-
 function parseErrorData(data) {
   const errorData = (Array.isArray(data))
     ? `{ "errors": [${data.toString()}]}` : data;
@@ -495,100 +431,6 @@ function parseErrorData(data) {
     log('error', 'Failed to parse injector response message', err);
     return undefined;
   }
-}
-
-function modIsEnabled(props, mod) {
-  return (!!props.modState[mod])
-    ? props.modState[mod].enabled
-    : false;
-}
-
-function LoadOrderBase(props) {
-  const loValue = (input) => {
-    const idx = props.order.indexOf(input);
-    return idx !== -1 ? idx : props.order.length;
-  }
-
-  const filtered = Object.keys(props.mods).filter(mod => modIsEnabled(props, mod));
-  const sorted = filtered.sort((lhs, rhs) => loValue(lhs) - loValue(rhs));
-
-  class ItemRenderer extends React.Component {
-    render() {
-      const item = this.props.item;
-      return !modIsEnabled(props, item)
-        ? null
-        : React.createElement(BS.ListGroupItem, {
-            style: {
-              backgroundColor: 'var(--brand-bg, black)',
-              borderBottom: '2px solid var(--border-color, white)'
-            },
-          },
-          React.createElement('div', {
-            style: {
-              fontSize: '1.1em',
-            },
-          },
-          React.createElement('img', {
-            src: props.mods[item].attributes.pictureUrl
-                  ? props.mods[item].attributes.pictureUrl
-                  : `${props.extensionPath}/gameart.jpg`,
-            className: 'mod-picture',
-            width:'75px',
-            height:'45px',
-            style: {
-              margin: '5px 10px 5px 5px',
-              border: '1px solid var(--brand-secondary,#D78F46)',
-            },
-          }),
-          util.renderModName(props.mods[item])));
-    }
-  }
-
-  return React.createElement(MainPage, {},
-    React.createElement(MainPage.Body, {},
-      React.createElement(BS.Panel, { id: 'harmony-loadorder-panel' },
-        React.createElement(BS.Panel.Body, {},
-          React.createElement(FlexLayout, { type: 'row' },
-            React.createElement(FlexLayout.Flex, {},
-              React.createElement(DraggableList, {
-                id: 'harmony-loadorder',
-                itemTypeId: 'harmony-loadorder-item',
-                items: sorted,
-                itemRenderer: ItemRenderer,
-                style: {
-                  height: '100%',
-                  overflow: 'auto',
-                  borderWidth: 'var(--border-width, 1px)',
-                  borderStyle: 'solid',
-                  borderColor: 'var(--border-color, white)',
-                },
-                apply: ordered => {
-                  props.onSetDeploymentNecessary(props.profile.gameId, true);
-                  return props.onSetOrder(props.profile.id, ordered)
-                },
-              })
-            ),
-            React.createElement(FlexLayout.Flex, {},
-              React.createElement('div', {
-                style: {
-                  padding: 'var(--half-gutter, 15px)',
-                }
-              },
-                React.createElement('h2', {},
-                  props.t('Changing your load order', { ns: props.I18N })),
-                React.createElement('p', {},
-                  props.t('Drag and drop the mods on the left to reorder them.'
-                      + 'Mods placed at the bottom of the load order will have priority over those above them.', { ns: props.I18N })),
-                  React.createElement('p', {},
-                  props.t('Note: You can only manage mods installed with Vortex. Installing other mods manually may cause unexpected errors.', { ns: props.I18N })),
-                  React.createElement('button', {
-                    id: 'save',
-                    className: 'btn btn-default',
-                    onClick: () => saveLoadOrder(props),
-                  },
-                  props.t('Save changes', { ns: props.I18N }))
-              ))
-        )))));
 }
 
 function findAssemblyFile(modFolder) {
@@ -608,11 +450,17 @@ function findAssemblyFile(modFolder) {
   });
 }
 
-function saveLoadOrder(props) {
-  const destination = path.join(props.moddingPath, LOAD_ORDER_FILE);
+function saveLoadOrder(context, gameId, loadOrder) {
+  const state = context.api.store.getState();
+  const mods = util.getSafe(state, ['persistent', 'mods', gameId], []);
+  const moddingPath = selectors.modPathsForGame(state, gameId)[''];
+  const destination = path.join(moddingPath, LOAD_ORDER_FILE);
+  const stagingFolder = selectors.installPathForGame(state, gameId);
   let assembliesInOrder = [];
-  return Promise.each(props.order, entry => {
-    const modFolder = path.join(props.stagingFolder, props.mods[entry].installationPath);
+  const keys = Object.keys(loadOrder);
+  return Promise.each(keys, key => {
+    const entry = loadOrder[key];
+    const modFolder = path.join(stagingFolder, mods[key].installationPath);
     // We expect an additional folder inside the installation path which contains all mod files.
     return findAssemblyFile(modFolder)
       .then(assemblyName => {
@@ -626,36 +474,11 @@ function saveLoadOrder(props) {
       });
     })
     .then(() => fs.writeFileAsync(destination, assembliesInOrder.join('\n'),{ encoding: 'utf-8' }))
-    .catch(err => props.onShowError('Failed to save load order', err, false));
+    .catch(err => context.api.showErrorNotification('Failed to save load order', err));
 }
-
-function mapStateToProps(state) {
-  const profile = selectors.activeProfile(state) || {};
-  const profileId = !!profile ? profile.id : '';
-  const gameId = !!profile ? profile.gameId : '';
-  const stagingFolder = !!gameId ? selectors.installPathForGame(state, gameId) : '';
-  return {
-    stagingFolder,
-    profile,
-    modState: util.getSafe(profile, ['modState'], {}),
-    mods: util.getSafe(state, ['persistent', 'mods', gameId], []),
-    order: util.getSafe(state, ['persistent', 'loadOrder', profileId], []),
-    I18N: `game-${gameId}`,
-  };
-}
-
-function mapDispatchToProps(dispatch) {
-  return {
-    onSetDeploymentNecessary: (gameId, necessary) => dispatch(actions.setDeploymentNecessary(gameId, necessary)),
-    onSetOrder: (profileId, ordered) => dispatch(actions.setLoadOrder(profileId, ordered)),
-    onShowError: (message, details, allowReport) => util.showError(dispatch, message, details, { allowReport }),
-  };
-}
-
-const LoadOrder = connect(mapStateToProps, mapDispatchToProps)(LoadOrderBase);
 
 module.exports = {
+  addLoadOrderPage,
   runPatcher,
-  initHarmonyUI,
   raiseConsentNotification,
 };

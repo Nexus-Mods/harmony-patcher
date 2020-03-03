@@ -11,14 +11,14 @@ export declare function runPatcher(
   injectVIGO?: boolean,
   unityEngineDir?: string): Promise<void>;
 
-export declare function initHarmonyUI(
+export declare function addLoadOrderPage(
   context: types.IExtensionContext,
-  extensionPath: string,
-  dataPath: string,
-  entryPoint: string,
-  modsPath: string,
   gameId: string,
-  onErrorCB: () => void): void;
+  loadOrderInfo: string,
+  gameArtURL: string,
+  preSort?: (items: any[]) => Promise<any[]>,
+  filter?: (mods: types.IMod[]) => types.IMod[],
+  callback?: (loadOrder: any) => void): void;
 
 export declare function raiseConsentNotification(
   context: types.IExtensionContext,
