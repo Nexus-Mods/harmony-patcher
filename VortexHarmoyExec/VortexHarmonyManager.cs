@@ -146,8 +146,14 @@ namespace VortexHarmonyExec
                 AssemblyName assemblyName = Util.FindAssemblyRef(assemblyFile, "mscorlib");
                 if (assemblyName != null)
                 {
-                    // Found a reference
-                    Console.WriteLine($"{FRAMEWORK_PREFIX}{assemblyName.Version.ToString()}");
+                    // Found a reference, but surprisingly the local mscorlib assembly itself might have
+                    //  a higher version; we need to check the local file.
+                    string localLib = Path.Combine(Path.GetDirectoryName(assemblyFile), "mscorlib.dll");
+                    string version = (File.Exists(localLib))
+                      ? System.Diagnostics.FileVersionInfo.GetVersionInfo(localLib).FileVersion
+                      : assemblyName.Version.ToString();
+
+                    Console.WriteLine($"{FRAMEWORK_PREFIX}{version}");
                     bFoundVersion = true;
                 }
 
