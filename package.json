@@ -1,6 +1,6 @@
 {
   "name": "harmony-support",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Code injection support for games written in C#",
   "main": "./src/index.js",
   "scripts": {

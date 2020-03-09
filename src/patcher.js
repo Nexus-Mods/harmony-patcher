@@ -354,27 +354,23 @@ function restore(cb) {
   msbuild.build();
 }
 
-function raiseConsentNotification(context, gameId, isMerged) {
-  const notifId = `${gameId}-patch-consent`;
+function raiseConsentDialog(context, gameId) {
+  const notifId = `${gameId}-harmony-patch-consent`;
   const api = context.api;
+  const state = api.store.getState();
+  const game = selectors.gameById(state, gameId);
+  const isMerged = (!!game && !!game.details && !!game.details.harmonyPatchDetails);
+  const isSuppressed = util.getSafe(state, ['settings', 'notifications', 'suppress', notifId], false);
   const t = (text, i18Options) => api.translate(text, i18Options);
   const howToRemovePatchText = (isMerged)
     ? t('clicking the "Purge Mods" button.')
     : t('clicking the "Patcher-Remove" button.');
 
-  api.sendNotification({
-    noDismiss: true,
-    allowSuppress: true,
-    id: notifId,
-    type: 'critical',
-    message: t('Game assembly patching is required',
-      { ns: NAMESPACE }),
-      actions: [
-        { title: 'More', action: () => consentDialog() },
-      ],
-  });
+  if (isSuppressed) {
+    return Promise.resolve();
+  }
 
-  const consentDialog = () => new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     return api.showDialog('question', 'Harmony Patcher', {
       bbcode: t('{{gameId}} is designed to use Vortex\'s '
             + 'game assembly patching implementation; what this means is - '
@@ -384,12 +380,12 @@ function raiseConsentNotification(context, gameId, isMerged) {
             { replace: { how: howToRemovePatchText, gameId }, ns: NAMESPACE }),
     },
     [
+      { label: 'Cancel', action: () => reject(new util.UserCanceled()) },
       { label: 'Ok', action: () => {
+        api.suppressNotification(notifId);
         api.dismissNotification(notifId);
-        api.suppressNotification(notifId, true);
         return resolve();
       }},
-      { label: 'Cancel', action: () => reject(new util.UserCanceled()) },
     ]);
   });
 }
@@ -480,5 +476,5 @@ function saveLoadOrder(context, gameId, loadOrder) {
 module.exports = {
   addLoadOrderPage,
   runPatcher,
-  raiseConsentNotification,
+  raiseConsentDialog,
 };

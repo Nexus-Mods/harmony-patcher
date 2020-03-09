@@ -20,8 +20,7 @@ export declare function addLoadOrderPage(
   filter?: (mods: types.IMod[]) => types.IMod[],
   callback?: (loadOrder: any) => void): void;
 
-export declare function raiseConsentNotification(
+export declare function raiseConsentDialog(
   context: types.IExtensionContext,
   gameId: string,
-  isMerged: boolean,
 ): Promise<void>;
