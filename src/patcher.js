@@ -354,12 +354,16 @@ function restore(cb) {
   msbuild.build();
 }
 
-function raiseConsentDialog(context, gameId) {
+function raiseConsentDialog(context, gameId, textOverride) {
   const notifId = `${gameId}-harmony-patch-consent`;
   const api = context.api;
   const state = api.store.getState();
   const game = selectors.gameById(state, gameId);
-  const isMerged = (!!game && !!game.details && !!game.details.harmonyPatchDetails);
+  if (game === undefined) {
+    api.showErrorNotification('Unable to find game object', gameId);
+    return Promise.resolve();
+  }
+  const isMerged = (!!game.details && !!game.details.harmonyPatchDetails);
   const isSuppressed = util.getSafe(state, ['settings', 'notifications', 'suppress', notifId], false);
   const t = (text, i18Options) => api.translate(text, i18Options);
   const howToRemovePatchText = (isMerged)
@@ -372,12 +376,13 @@ function raiseConsentDialog(context, gameId) {
 
   return new Promise((resolve, reject) => {
     return api.showDialog('question', 'Harmony Patcher', {
-      bbcode: t('{{gameId}} is designed to use Vortex\'s '
-            + 'game assembly patching implementation; what this means is - '
-            + 'Vortex will inject code into your game\'s assembly which aims to execute '
-            + 'our mod loader.<br /><br />'
-            + 'This is easily reversible by {{how}}',
-            { replace: { how: howToRemovePatchText, gameId }, ns: NAMESPACE }),
+      bbcode: (!!textOverride)
+        ? t(textOverride)
+        : t('Vortex is able to provide and execute a mod loader for "{{gameName}}" by '
+          + 'patching the game assembly. In order to do so, Vortex will need to inject code '
+          + 'into your game\'s assembly directly.<br /><br />'
+          + 'This process can be reversed at any time by {{how}}',
+          { replace: { how: howToRemovePatchText, gameName: game.name }, ns: NAMESPACE }),
     },
     [
       { label: 'Cancel', action: () => reject(new util.UserCanceled()) },

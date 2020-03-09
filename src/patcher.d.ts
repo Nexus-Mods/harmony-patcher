@@ -23,4 +23,5 @@ export declare function addLoadOrderPage(
 export declare function raiseConsentDialog(
   context: types.IExtensionContext,
   gameId: string,
+  textOverride?: string,
 ): Promise<void>;
