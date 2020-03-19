@@ -167,10 +167,10 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, conte
     : log('error', 'patch injector has reported issues', err));
 }
 
-function addLoadOrderPage(context, gameId, loadOrderInfo, gameArtURL, preSort, filter, callback) {
+function addLoadOrderPage(context, gameId, createInfoPanel, gameArtURL, preSort, filter, callback) {
   context.registerLoadOrderPage({
     gameId,
-    loadOrderInfo,
+    createInfoPanel,
     gameArtURL,
     preSort: (items) => {
       if (!!preSort && typeof(preSort) === "function") {
