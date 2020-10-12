@@ -12,5 +12,4 @@ bld/
 [Oo]bj/
 node_modules
 packages
-dist/UnityEngine.*
-dist/VortexHarmoyExec.*
+dist  
