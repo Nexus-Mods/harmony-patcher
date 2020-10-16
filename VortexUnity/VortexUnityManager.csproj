@@ -35,26 +35,26 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Xml" />
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\..\Games\UntitledGooseGame\Untitled_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>..\dist\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AssetBundleModule">
-      <HintPath>..\..\..\..\..\Games\UntitledGooseGame\Untitled_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
+      <HintPath>..\dist\UnityEngine.AssetBundleModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\..\..\Games\UntitledGooseGame\Untitled_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>..\dist\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>..\..\..\..\..\Games\UntitledGooseGame\Untitled_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <HintPath>..\dist\UnityEngine.IMGUIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule">
-      <HintPath>..\..\..\..\..\Games\UntitledGooseGame\Untitled_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+      <HintPath>..\dist\UnityEngine.TextRenderingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\Games\UntitledGooseGame\Untitled_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <HintPath>..\dist\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIModule">
-      <HintPath>..\..\..\..\..\Games\UntitledGooseGame\Untitled_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+      <HintPath>..\dist\UnityEngine.UIModule.dll</HintPath>
     </Reference>
     <Reference Include="VortexHarmonyInstaller, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
