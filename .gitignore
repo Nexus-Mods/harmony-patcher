@@ -12,4 +12,7 @@ bld/
 [Oo]bj/
 node_modules
 packages
-dist  
+dist/
+dist/UnityEngine.*
+dist/VortexHarmonyExec.*
+dist/VortexInjectorIPC.*
