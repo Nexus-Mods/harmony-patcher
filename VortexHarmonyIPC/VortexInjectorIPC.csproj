@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{139E4D1A-276B-4D03-A0EB-1BDC38B023B2}</ProjectGuid>
+    <ProjectGuid>{21BF0A63-B8A7-4DDF-9184-FBA5AAAC8A71}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>VortexHarmoyExec</RootNamespace>
-    <AssemblyName>VortexHarmoyExec</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <RootNamespace>VortexInjectorIPC</RootNamespace>
+    <AssemblyName>VortexInjectorIPC</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
@@ -22,7 +22,6 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -32,7 +31,6 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Options">
@@ -40,20 +38,35 @@
     </PackageReference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions">
       <Private>False</Private>
     </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Injector.cs" />
-    <Compile Include="JSONResponse.cs" />
-    <Compile Include="VortexHarmonyManager.cs" />
+    <Compile Include="Patches\ReflectionPatch.cs" />
+    <Compile Include="Patches\VIGOPatch.cs" />
+    <Compile Include="Patches\VMLPatch.cs" />
+    <Compile Include="PatchInjection\CoreDelegates.cs" />
+    <Compile Include="PatchInjection\EntryPoint.cs" />
+    <Compile Include="PatchInjection\Injector.cs" />
+    <Compile Include="Legacy\JSONResponse.cs" />
+    <Compile Include="Types\IEntryPoint.cs" />
+    <Compile Include="Types\IPatch.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PatchInjection\Server.cs" />
+    <Compile Include="Legacy\VortexHarmonyManager.cs" />
+    <Compile Include="Types\IPatchConfig.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="Templates\IPCObject.json" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="0Harmony">
@@ -73,5 +86,6 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </Reference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

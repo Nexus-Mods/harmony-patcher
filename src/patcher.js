@@ -1,6 +1,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const { app, remote } = require('electron');
+const getVersion = require('exe-version');
 const Promise = require('bluebird');
 const msbuildLib = require('msbuild');
 const { fs, log, selectors, util } = require('vortex-api');
@@ -8,15 +9,9 @@ const semver = require('semver');
 
 const uniApp = app || remote.app;
 
-const LOG_FILE_PATH = path.join(uniApp.getPath('userData'), 'harmonypatcher.log');
-const PATCHER_EXEC = 'VortexHarmoyExec.exe';
 const MODULE_PATH = path.join(util.getVortexPath('modules_unpacked'), 'harmony-patcher', 'dist');
-const EXEC_PATH = path.join(MODULE_PATH, PATCHER_EXEC);
 
 const LOAD_ORDER_FILE = 'load_order.txt';
-
-const FRAMEWORK_VER_PREFIX = 'FrameworkVersion=';
-const ASSEMBLY_REF_QUERY_PREFIX = 'FoundAssembly=';
 
 const VIGO_ASSEMBLY = 'VortexUnity.dll';
 const VIGO_DIR = path.resolve(MODULE_PATH, '..', 'VortexUnity');
@@ -39,23 +34,52 @@ const UNITY_ASSEMBLIES = [
   'UnityEngine.UIModule.dll',
 ];
 
-// INVALID_ENTRYPOINT = -1,
-// MISSING_FILE = -2,
-// INVALID_ARGUMENT = -3,
-// FILE_OPERATION_ERROR = -4,
-// UNHANDLED_FILE_VERSION = -5,
-// FAILED_DOWNLOAD = -6,
-// UNKNOWN = -13,
-const PATCHER_ERRORS = {
-  '-1' : 'Invalid Entry Point',
-  '-2' : 'Missing File',
-  '-3' : 'Patcher received invalid argument',
-  '-4' : 'File operation failed',
-  '-5' : 'Encountered unhandled assembly version',
-  '-6' : 'Essential download has failed',
-  '-7' : 'Assembly reference lookup failed',
-  '-13' : `Unknown error - please include your "${LOG_FILE_PATH}" file when reporting this error`,
-};
+function translateLegacyPatcherCall(extensionPath, dataPath, entryPoint, remove, modsPath, injectVIGO) {
+  const dataPathDir = path.extname(dataPath) !== '' ? path.dirname(dataPath) : dataPath;
+  const VMLEntryPoint = {
+    AssemblyPath: path.join(dataPathDir, 'VortexHarmonyInstaller.dll'),
+    TypeName: 'VortexHarmonyInstaller.VortexPatcher',
+    MethodName: 'Patch',
+    DependencyPath: MODULE_PATH,
+    ExpandoObjectData: modsPath,
+  };
+
+  const VIGOEntryPoint = {
+    AssemblyPath: path.join(dataPathDir, 'VortexUnity.dll'),
+    TypeName: 'VortexUnity.VortexUnityManager',
+    MethodName: 'RunUnityPatcher',
+    DependencyPath: MODULE_PATH,
+  }
+
+  const target = entryPoint.split('::');
+
+  const targetAssemblyPath = path.join(dataPathDir, 'Assembly-CSharp.dll');
+  const targetEntryPoint = {
+    AssemblyPath: targetAssemblyPath,
+    TypeName: target[0],
+    MethodName: target[1],
+    DependencyPath: (path.extname(dataPath) !== '')
+      ? path.dirname(dataPath) : dataPath,
+  };
+
+  const VMLPatchConfig = {
+    Command: (remove) ? 'PurgeVML' : 'DeployVML',
+    ExtensionPath: extensionPath,
+    SourceEntryPoint: VMLEntryPoint,
+    TargetEntryPoints: [ targetEntryPoint ],
+  };
+
+  const VIGOPatchConfig = {
+    Command: (remove) ? 'PurgeVIGO' : 'DeployVIGO',
+    ExtensionPath: extensionPath,
+    SourceEntryPoint: VIGOEntryPoint,
+    TargetEntryPoints: [ targetEntryPoint ],
+  }
+
+  return (injectVIGO)
+    ? [VMLPatchConfig, VIGOPatchConfig]
+    : [VMLPatchConfig];
+}
 
 // Usage:
 //  -m "AbsolutePath" -> Managed directory or the game's datapath
@@ -75,7 +99,14 @@ const PATCHER_ERRORS = {
 //
 //  -v -> Decides whether VIGO should be built or not.
 function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, context, injectVIGO, unityEngineDir) {
-  let lastError;
+  if (context !== undefined && context.api.ext.applyInjectorCommand === undefined) {
+    log('error', 'unable to run patcher', { extensionPath });
+    if (context === undefined) {
+      throw new Error('Deprecated game extension, please include log file when reporting this');
+    } else {
+      throw new Error('Harmony Injector API is unavailable');
+    }
+  }
 
   // The assembly path may sometimes differ from the location of the
   //  UnityEngine assemblies. We need these to build VIGO, so in these
@@ -90,7 +121,7 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, conte
   // Runs the VIGO build functionality.
   const buildInGameUI = () => (remove || !injectVIGO)
     ? Promise.resolve()
-    : queryNETVersion(managedDirPath)
+    : queryNETVersion(path.join(managedDirPath, 'mscorlib.dll'))
         .then(version => buildVIGO(managedDirPath, version));
 
   // MSBuild debug function - do not remove.
@@ -98,7 +129,6 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, conte
   //   .then(() => queryNETVersion(dataPath))
   //   .then(version => debugMSBuild(version));
 
-  const isMerged = (unityEngineDir !== undefined) ? true : false;
   return buildInGameUI()
     .then(() => cleanAssemblies())
     .catch(err => {
@@ -111,8 +141,6 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, conte
       return cleanAssemblies();
     })
   .then(() => new Promise((resolve, reject) => {
-    const wstream = fs.createWriteStream(LOG_FILE_PATH);
-    let patcher;
     modsPath = !!modsPath ? modsPath : path.join(managedDirPath, 'VortexMods');
 
     // Given the new merging functionality, the assembly we wish to patch
@@ -122,49 +150,31 @@ function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, conte
     //  location of the mscorlib assembly which sits alongside the UnityEngine.
     //  We modify the dataPath to include the expected location of the mscorlib assembly;
     //  the injector will decipher this.
-    dataPath = (unityEngineDir !== undefined)  ? `${dataPath}::${unityEngineDir}` : dataPath;
+    //dataPath = (unityEngineDir !== undefined)  ? `${dataPath}::${unityEngineDir}` : dataPath;
     try {
-      patcher = spawn(EXEC_PATH, ['-g', extensionPath,
-                                  '-m', dataPath,
-                                  '-e', entryPoint,
-                                  '-i', MODULE_PATH,
-                                  '-x', modsPath,
-                                  !!remove ? '-r' : '',
-                                  !!injectVIGO ? '-v' : '']);
+      const patches = translateLegacyPatcherCall(extensionPath, dataPath, entryPoint, remove, modsPath, injectVIGO);
+      const modLoaderPath = path.extname(dataPath) !== '' ? path.dirname(dataPath) : dataPath;
+      context.api.ext.applyInjectorCommand(patches[0], modLoaderPath, undefined, (err, result) => {
+        if (err !== undefined) {
+          return reject(err);
+        }
+
+        if (patches[1] !== undefined) {
+          context.api.ext.applyInjectorCommand(patches[1], modLoaderPath, undefined, (err, result) => {
+            if (err !== undefined) {
+              return reject(err);
+            }
+
+            return resolve();
+          });
+        } else {
+          return resolve();
+        }
+      })
     } catch (err) {
       return reject(err);
     }
-
-    patcher.stdout.on('data', data => {
-      const formatted = data.toString().split('\n');
-      formatted.forEach(line => {
-        wstream.write(line + '\n');
-      });
-    });
-
-    patcher.stderr.on('data', data => {
-      const formatted = data.toString().split('\n').filter(line => !!line);
-      lastError = parseErrorData(formatted);
-      formatted.forEach(line => {
-        wstream.write(line + '\n');
-      });
-    });
-
-    patcher.on('error', err => {
-      wstream.close();
-      return reject(err);
-    });
-
-    patcher.on('close', code => {
-      wstream.close();
-      return (code !== 0)
-        ? reject(createError(code, lastError))
-        : resolve();
-    });
-  }))
-  .catch(err => (!!context)
-    ? context.api.showErrorNotification('patch injector has reported issues', err)
-    : log('error', 'patch injector has reported issues', err));
+  }));
 }
 
 function addLoadOrderPage(context, gameId, createInfoPanel, gameArtURL, preSort, filter, callback) {
@@ -196,70 +206,34 @@ function addLoadOrderPage(context, gameId, createInfoPanel, gameArtURL, preSort,
 }
 
 function getTargetFramework(version) {
+  const MSBUILD_VERSIONS = {
+    '2.0': '2.0.50727', 
+    '3.0':'3.0',
+    '3.5': '3.5',
+    '4.0': '4.0', 
+    '4.5': '4.0',
+    '4.6': '4.0',
+    '4.7': '4.0',
+    '4.8': '4.0',
+  };
+
   const coercedVersion = semver.coerce(version);
   return (semver.valid(coercedVersion))
     ? (coercedVersion.major > 3)
-      ? `v${coercedVersion.major}.${coercedVersion.minor}`
+      ? `v${MSBUILD_VERSIONS[coercedVersion.major + '.' + coercedVersion.minor]}`
       : 'v3.5'
     : 'v3.5';
 }
 
-function injectorQuery(dataPath, pattern, assemblyName = undefined) {
-  const wstream = fs.createWriteStream(LOG_FILE_PATH);
-  let lastError;
-  let match;
-  const args = (assemblyName === undefined)
-    ? ['-q', dataPath]
-    : ['-a', dataPath + '::' + assemblyName];
-  return new Promise((resolve, reject) => {
-    let patcher;
-    try {
-      patcher = spawn(EXEC_PATH, args);
-    } catch (err) {
-      return reject(err);
-    }
+function queryNETVersion(corLibAssembly) {
+  let version = '3.5.0.0';
+  try {
+    version = getVersion.default(corLibAssembly);
+  } catch (err) {
+    version = '3.5.0.0';
+  }
 
-    patcher.stdout.on('data', data => {
-      const formatted = data.toString().split('\n');
-      formatted.forEach(line => {
-        wstream.write(line + '\n');
-      });
-      match = (match === undefined)
-        ? formatted.find(line => line.indexOf(pattern) !== -1)
-        : match;
-    });
-
-    patcher.stderr.on('data', data => {
-      const formatted = data.toString().split('\n').filter(line => !!line);
-      lastError = parseErrorData(formatted);
-      formatted.forEach(line => {
-        wstream.write(line + '\n');
-      });
-    });
-
-    patcher.on('error', err => {
-      wstream.close();
-      return reject(err);
-    });
-
-    patcher.on('close', code => {
-      wstream.close();
-      return (code !== 0)
-        ? reject(createError(code, lastError))
-        : resolve(match);
-    });
-  }).then(match => (match !== undefined)
-    ? match.substring(pattern.length)
-    : undefined);
-}
-
-function queryAssemblyReference(dataPath, assemblyName) {
-  return injectorQuery(dataPath, ASSEMBLY_REF_QUERY_PREFIX, assemblyName);
-}
-
-function queryNETVersion(dataPath) {
-  return injectorQuery(dataPath, FRAMEWORK_VER_PREFIX)
-    .then(version => (version !== undefined) ? version : '3.5.0.0');
+  return Promise.resolve(version);
 }
 
 function cleanAssemblies() {
@@ -290,7 +264,7 @@ function buildVIGO(dataPath, version) {
   _BUILD_VER = getTargetFramework(version);
   const startBuild = () => new Promise((resolve, reject) =>
     copyAssemblies(dataPath)
-      .then(() => restore(() => build(() => resolve())))
+      .then(() => build(() => resolve()))
       .catch(err => reject(err)));
 
   return fs.lstatAsync(path.join(dataPath, VIGO_ASSEMBLY))
@@ -337,6 +311,8 @@ function debugMSBuild(version) {
 
 function build(cb) {
   var msbuild = new msbuildLib(cb);
+  // Use the .NET msbuild executable.
+  msbuild.version = _BUILD_VER.substr(1);
   msbuild.sourcePath = VIGO_PROJ;
   msbuild.configuration = `Release;TargetFrameworkVersion=${_BUILD_VER}`;
   msbuild.overrideParams.push('/verbosity:quiet');
@@ -345,8 +321,12 @@ function build(cb) {
 }
 
 function restore(cb) {
+  // .NET msbuild does not appear to support restore
+  //   the same way that VS 2017 does - that's fine,
+  //   we provide the required assemblies anyway.
   var msbuild = new msbuildLib(cb);
-  msbuild.sourcePath = VIGO_DIR;
+  msbuild.version = _BUILD_VER.substr(1);
+  msbuild.sourcePath = VIGO_PROJ;
   msbuild.configuration = `Release;TargetFrameworkVersion=${_BUILD_VER}`;
   msbuild.overrideParams.push('/t:restore');
   msbuild.overrideParams.push('/verbosity:quiet');
