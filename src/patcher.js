@@ -99,12 +99,12 @@ function translateLegacyPatcherCall(extensionPath, dataPath, entryPoint, remove,
 //
 //  -v -> Decides whether VIGO should be built or not.
 function runPatcher(extensionPath, dataPath, entryPoint, remove, modsPath, context, injectVIGO, unityEngineDir) {
-  if (context !== undefined && context.api.ext.applyInjectorCommand === undefined) {
+  if (context?.api?.ext?.applyInjectorCommand === undefined) {
     log('error', 'unable to run patcher', { extensionPath });
     if (context === undefined) {
-      throw new Error('Deprecated game extension, please include log file when reporting this');
+      return Promise.reject(new Error('Deprecated game extension, please include log file when reporting this'));
     } else {
-      throw new Error('Harmony Injector API is unavailable');
+      return Promise.reject(new Error('Harmony Injector API is unavailable'));
     }
   }
 
