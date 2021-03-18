@@ -1,6 +1,6 @@
 {
   "name": "harmony-support",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Code injection support for games written in C#",
   "main": "./src/index.js",
   "scripts": {
@@ -14,12 +14,14 @@
   ],
   "author": "Black Tree Gaming Ltd.",
   "license": "GPL-3.0",
-  "dependencies": {
-    "async": "^2.6.2",
-    "copyfiles": "^1.0.0",
-    "msbuild": "1.1.2",
+  "devDependencies": {
     "node-gyp": "^5.0.7",
     "turbowalk": "Nexus-Mods/node-turbowalk",
     "vortex-api": "Nexus-Mods/vortex-api"
+  },
+  "dependencies": {
+    "async": "^2.6.2",
+    "copyfiles": "^1.0.0",
+    "msbuild": "1.1.2"
   }
 }
