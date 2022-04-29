@@ -20,7 +20,7 @@
     "vortex-api": "Nexus-Mods/vortex-api"
   },
   "dependencies": {
-    "async": "^2.6.2",
+    "async": "^2.6.4",
     "copyfiles": "^1.0.0",
     "msbuild": "1.1.2"
   }
