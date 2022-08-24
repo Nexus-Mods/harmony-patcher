@@ -3,8 +3,8 @@ var path = require('path');
 
 function build() {
   var msbuild = new msbuildLib();
-  msbuild.sourcePath = path.join(__dirname, 'VortexHarmonyIPC', 'VortexHarmonyIPC.csproj');
-
+  msbuild.sourcePath = path.join(__dirname, 'VortexHarmonyIPC');
+  msbuild.version = undefined;
   msbuild.configuration = process.argv[2] || 'Release';
   msbuild.configuration += ';TargetFrameworkVersion=v4.5';
   //msbuild.overrideParams.push('/m'); // parallel build
@@ -16,6 +16,7 @@ function build() {
 
 function restore(cb) {
   var msbuild = new msbuildLib(cb);
+  msbuild.version = undefined;
   msbuild.sourcePath = path.join(__dirname, 'VortexHarmonyIPC');
   msbuild.configuration = process.argv[2] || 'Release';
   msbuild.configuration += ';TargetFrameworkVersion=v4.5';
