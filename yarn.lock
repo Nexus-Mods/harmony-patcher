@@ -53,9 +53,9 @@ assert-plus@1.0.0, assert-plus@^1.0.0:
   integrity sha1-8S4PPF13sLHN2RRpQuTpbB5N1SU=
 
 async@*:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/async/-/async-3.1.0.tgz#42b3b12ae1b74927b5217d8c0016baaf62463772"
-  integrity sha512-4vx/aaY6j/j3Lw3fbCHNWP0pPaTCew3F6F3hYyl/tHs/ndmV1q7NW9T5yuJ2XAGwdQrP+6Wu20x06U4APo/iQQ==
+  version "3.2.4"
+  resolved "https://registry.yarnpkg.com/async/-/async-3.2.4.tgz#2d22e00f8cddeb5fde5dd33522b56d1cf569a81c"
+  integrity sha512-iAB+JbDEGXhyIUavoDl9WP/Jj106Kz9DEn1DPgYw5ruDn0e3Wgi3sKFm55sASdGBNOQB8F59d9qQ7deqrHA8wQ==
 
 async@^2.6.4:
   version "2.6.4"
@@ -205,9 +205,9 @@ env-paths@^2.2.0:
   integrity sha512-6u0VYSCo/OW6IoD5WCLLy9JUGARbamfSavcNXry/eu8aHVFei6CD3Sw+VGX5alea1i9pgPHW0mbu6Xj0uBh7gA==
 
 events@*:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/events/-/events-3.0.0.tgz#9a0a0dfaf62893d92b875b8f2698ca4114973e88"
-  integrity sha512-Dc381HFWJzEOhQ+d8pkNon++bk9h6cdAoAj4iE6Q4y6xgTzySWXlKn05/TVNpjnfRqi/X0EpJEJohPjNI3zpVA==
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/events/-/events-3.3.0.tgz#31a95ad0a924e2d2c419a813aeb2c4e878ea7400"
+  integrity sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==
 
 extend@~3.0.2:
   version "3.0.2"
@@ -482,10 +482,10 @@ mkdirp@^0.5.1, mkdirp@^0.5.5:
   dependencies:
     minimist "^1.2.5"
 
-msbuild@1.1.2:
-  version "1.1.2"
-  resolved "https://registry.yarnpkg.com/msbuild/-/msbuild-1.1.2.tgz#c6bf66aabc70d81b7a2590ed85ed5e7cd6eaee53"
-  integrity sha512-uokwgHTir5KkZjfNSgJEJu3tBKgqBCCKQVwOzA/7TSSUhzC/p1vvSxwunLY0d0lzo2rb9fuIR0o5wU0IVypBnQ==
+msbuild@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/msbuild/-/msbuild-1.2.0.tgz#178580bc327f5efd810822b148daf0c55924de17"
+  integrity sha512-2mQnBXLrhSjuAX4xSyXDWoLEdvNU60hc/yPJf/e8isCzZk6rLVD7fBDjOksWV6mYWbHhOUZ4L5N4wSNhW0hXEw==
   dependencies:
     async "*"
     colors "*"
