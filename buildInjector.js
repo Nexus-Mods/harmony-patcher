@@ -7,6 +7,7 @@ async function build() {
     msbuild.sourcePath = path.join(__dirname, 'VortexHarmonyIPC');
     msbuild.version = undefined;
     msbuild.configuration = process.argv[2] || 'Release';
+    msbuild.configuration += ';TargetFrameworkVersion=v4.5.2;Platform=AnyCPU';
     // msbuild.configuration += ';TargetFrameworkVersion=v4.5.2';
     //msbuild.overrideParams.push('/m'); // parallel build
     msbuild.overrideParams.push('/clp:ErrorsOnly');
@@ -30,6 +31,7 @@ async function restore() {
     msbuild.version = undefined;
     msbuild.sourcePath = path.join(__dirname, 'VortexHarmonyIPC');
     msbuild.configuration = process.argv[2] || 'Release';
+    msbuild.configuration += ';TargetFrameworkVersion=v4.5.2;Platform=AnyCPU';
     // msbuild.configuration += ';TargetFrameworkVersion=v4.5.2';
     msbuild.overrideParams.push('/t:restore');
     msbuild.on('error', (err, results) => {
