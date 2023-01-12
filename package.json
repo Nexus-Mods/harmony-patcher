@@ -14,6 +14,11 @@
   ],
   "author": "Black Tree Gaming Ltd.",
   "license": "GPL-3.0",
+  "os": [
+    "win32",
+    "!linux",
+    "!darwin"
+  ],
   "devDependencies": {
     "node-gyp": "^5.0.7",
     "turbowalk": "Nexus-Mods/node-turbowalk",
