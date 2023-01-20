@@ -1,6 +1,6 @@
 {
   "name": "harmony-support",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Code injection support for games written in C#",
   "main": "./src/index.js",
   "scripts": {
@@ -20,7 +20,7 @@
     "!darwin"
   ],
   "devDependencies": {
-    "node-gyp": "^5.0.7",
+    "node-gyp": "^9.0.0",
     "turbowalk": "Nexus-Mods/node-turbowalk",
     "vortex-api": "Nexus-Mods/vortex-api"
   },
